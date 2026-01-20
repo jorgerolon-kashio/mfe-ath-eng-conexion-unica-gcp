@@ -1,0 +1,8 @@
+{
+  "name": "Kashio Merchant Onboarding Studio",
+  "description": "High-fidelity orchestration platform for multi-service merchant lifecycle management.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
