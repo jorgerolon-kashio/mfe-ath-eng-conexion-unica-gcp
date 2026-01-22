@@ -1,10 +1,10 @@
-FROM node:18-alpine as build-step
+FROM node:18-alpine AS build-step
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm install
 COPY . .
 
-RUN npm run build --configuration=production
+RUN npm run build
 
 # Stage 2: Servidor Nginx
 FROM nginx:alpine

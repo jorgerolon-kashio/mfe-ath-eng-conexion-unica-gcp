@@ -28,8 +28,46 @@ export class KashioApiService {
     
     const servicePath = serviceMap[service] || service.toLowerCase();
     
-    // Check for direct BFF endpoints first (optimized paths for common operations)
+    // Check for composite endpoints first (support both full and simplified paths)
+    if ((endpoint === '/organizations/complete' || endpoint === '/kbrm/v2/organizations/complete') && service === 'KBRM') {
+      return '/api/v1/organizations/complete';
+    }
+    if ((endpoint === '/users/complete' || endpoint === '/ksec/v1/users/complete') && service === 'KSEC') {
+      return '/api/v1/users/complete';
+    }
+    
+    // Check for direct BFF endpoints (optimized paths for common operations)
     // These are handled by specific controllers in the BFF
+    if (endpoint === '/kbrm/v2/organizations' && service === 'KBRM') {
+      return '/api/v1/organizations';
+    }
+    if (endpoint === '/kbrm/v2/customers' && service === 'KBRM') {
+      return '/api/v1/customers';
+    }
+    if (endpoint === '/kbrm/v2/party-roles' && service === 'KBRM') {
+      return '/api/v1/party-roles';
+    }
+    if (endpoint === '/kbrm/v2/agreements' && service === 'KBRM') {
+      return '/api/v1/agreements';
+    }
+    if (endpoint === '/kbrm/v2/address' && service === 'KBRM') {
+      return '/api/v1/address';
+    }
+    if (endpoint === '/kbrm/v2/contact-medium' && service === 'KBRM') {
+      return '/api/v1/contact-medium';
+    }
+    if (endpoint === '/kbrm/v2/relationships' && service === 'KBRM') {
+      return '/api/v1/relationships';
+    }
+    if (endpoint.startsWith('/kbrm/v2/customers/') && service === 'KBRM' && !endpoint.includes('/api') && endpoint.split('/').length === 4) {
+      const customerId = endpoint.split('/').pop();
+      return `/api/v1/customers/${customerId}`;
+    }
+    if (endpoint.startsWith('/kbrm/v2/party-roles/') && service === 'KBRM') {
+      const partyRoleId = endpoint.split('/').pop();
+      return `/api/v1/party-roles/${partyRoleId}`;
+    }
+    // Support for v1 endpoints (backward compatibility)
     if (endpoint === '/kbrm/v1/organizations' && service === 'KBRM') {
       return '/api/v1/organizations';
     }

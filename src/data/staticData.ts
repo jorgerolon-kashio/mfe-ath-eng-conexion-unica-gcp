@@ -43,7 +43,7 @@ export interface AgreementType {
 
 /**
  * Tipos de Party Role obtenidos de d1
- * Endpoint: GET /kbrm/v1/party-role-types
+ * Endpoint: GET /kbrm/v2/party-role-types
  */
 export const PARTY_ROLE_TYPES: PartyRoleType[] = [
   {
@@ -113,7 +113,7 @@ export const PARTY_ROLE_TYPES: PartyRoleType[] = [
 
 /**
  * Tipos de Contact Medium obtenidos de d1
- * Endpoint: GET /kbrm/v1/contact-medium-type
+ * Endpoint: GET /kbrm/v2/contact-medium-type
  */
 export const CONTACT_MEDIUM_TYPES: ContactMediumType[] = [
   {
@@ -180,7 +180,7 @@ export function getActivePartyRoleTypes(): PartyRoleType[] {
 
 /**
  * Tipos de Relationship obtenidos de d1
- * Endpoint: GET /kbrm/v1/relationships
+ * Endpoint: GET /kbrm/v2/relationships
  */
 export const RELATIONSHIP_TYPES: RelationshipType[] = [
   {
@@ -227,7 +227,7 @@ export const RELATIONSHIP_TYPES: RelationshipType[] = [
 
 /**
  * Tipos de Agreement obtenidos de d1
- * Endpoint: GET /kbrm/v1/agreement-types
+ * Endpoint: GET /kbrm/v2/agreement-types
  */
 export const AGREEMENT_TYPES: AgreementType[] = [
   {
