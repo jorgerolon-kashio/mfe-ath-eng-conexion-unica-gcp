@@ -1,15 +1,40 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useMsal } from '@azure/msal-react';
 import { loginRequest } from '../config/msalConfig';
+import { InteractionStatus } from '@azure/msal-browser';
 
 const Login: React.FC = () => {
-  const { instance } = useMsal();
+  const { instance, inProgress } = useMsal();
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async () => {
+    // Prevenir múltiples clics mientras hay una interacción en curso
+    if (inProgress !== InteractionStatus.None || isLoading) {
+      console.log('Ya hay una interacción en curso, esperando...');
+      return;
+    }
+
+    setIsLoading(true);
     try {
+      // Verificar si ya hay una cuenta activa
+      const accounts = instance.getAllAccounts();
+      if (accounts.length > 0) {
+        console.log('Ya hay una sesión activa');
+        return;
+      }
+
+      // Iniciar login
       await instance.loginPopup(loginRequest);
-    } catch (error) {
-      console.error('Error durante el login:', error);
+    } catch (error: any) {
+      // Ignorar el error si es porque ya hay una interacción en curso
+      if (error.errorCode === 'interaction_in_progress') {
+        console.log('Interacción ya en curso, esperando...');
+      } else {
+        console.error('Error durante el login:', error);
+        alert('Error al iniciar sesión. Por favor, intenta nuevamente.');
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -26,7 +51,8 @@ const Login: React.FC = () => {
           </div>
           <button
             onClick={handleLogin}
-            className="w-full bg-primary hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2"
+            disabled={isLoading || inProgress !== InteractionStatus.None}
+            className="w-full bg-primary hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-3 px-6 rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2"
           >
             <svg className="w-5 h-5" viewBox="0 0 23 23" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M11.5 0C5.149 0 0 5.149 0 11.5S5.149 23 11.5 23 23 17.851 23 11.5 17.851 0 11.5 0z" fill="#F25022"/>
@@ -34,7 +60,7 @@ const Login: React.FC = () => {
               <path d="M11.5 0C5.149 0 0 5.149 0 11.5S5.149 23 11.5 23 23 17.851 23 11.5 17.851 0 11.5 0z" fill="#00A4EF"/>
               <path d="M11.5 0C5.149 0 0 5.149 0 11.5S5.149 23 11.5 23 23 17.851 23 11.5 17.851 0 11.5 0z" fill="#FFB900"/>
             </svg>
-            Iniciar sesión con Microsoft
+            {isLoading || inProgress !== InteractionStatus.None ? 'Iniciando sesión...' : 'Iniciar sesión con Microsoft'}
           </button>
         </div>
       </div>

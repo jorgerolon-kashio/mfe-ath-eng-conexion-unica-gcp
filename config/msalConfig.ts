@@ -11,6 +11,21 @@ export const msalConfig: Configuration = {
     cacheLocation: 'sessionStorage', // Opciones: 'sessionStorage' o 'localStorage'
     storeAuthStateInCookie: false, // Establecer en true si tienes problemas con Safari
   },
+  system: {
+    allowNativeBroker: false, // Deshabilitar broker nativo para evitar conflictos
+    loggerOptions: {
+      loggerCallback: (level, message, containsPii) => {
+        if (containsPii) {
+          return;
+        }
+        // Solo loguear errores en producción
+        if (level === 0) { // Error
+          console.error('MSAL Error:', message);
+        }
+      },
+      logLevel: 0, // Error level only
+    },
+  },
 };
 
 // Scopes que la aplicación necesita
