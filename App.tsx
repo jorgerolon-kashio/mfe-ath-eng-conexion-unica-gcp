@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useIsAuthenticated, useAccount } from '@azure/msal-react';
 import { 
   EnvironmentType, 
   EnvironmentConfig, 
@@ -21,6 +22,8 @@ import {
   getActiveContactMediumTypes,
   getActiveAgreementTypes
 } from './src/data/staticData';
+import Login from './components/Login';
+import UserProfile from './components/UserProfile';
 
 const PROGRESS_KEY = 'kashio_onboarding_v2';
 
@@ -77,6 +80,9 @@ const getOnboardingType = (partyRoleTypeId: number): 'CORPORATIVO' | 'SUCURSAL' 
 };
 
 const App: React.FC = () => {
+  const isAuthenticated = useIsAuthenticated();
+  const account = useAccount(null);
+
   const [onboardingData, setOnboardingData] = useState<OnboardingData>(INITIAL_ONBOARDING_DATA);
   const [ctx, setCtx] = useState<Record<string, any>>({});
   const [savedSteps, setSavedSteps] = useState<{step1: boolean, step2: boolean, step3: boolean}>({
@@ -336,6 +342,11 @@ const App: React.FC = () => {
     }
   };
 
+  // Si no está autenticado, mostrar la pantalla de login
+  if (!isAuthenticated) {
+    return <Login />;
+  }
+
   return (
     <div className="bg-background-light dark:bg-background-dark font-display text-text-main antialiased h-screen overflow-hidden flex">
       <aside className="w-72 bg-white dark:bg-[#1a202c] border-r border-border-light flex flex-col h-full shrink-0 z-20">
@@ -374,16 +385,7 @@ const App: React.FC = () => {
           </a>
         </nav>
         <div className="p-4 border-t border-border-light bg-white dark:bg-[#1a202c]">
-          <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-background-light cursor-pointer transition-colors">
-            <div className="size-10 rounded-full bg-cover bg-center border border-border-light" style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuBlG9fDwLvar-OlueAvKM6hSKdW__-bFSzNUXtqzRexskRKO3ABFqOAFXWwtVT-bCxCq_fnw_DY7KUYHZ0pfT6uWGiLMX4ASFjC5GJo2lI0Y8N1c0rwL338cN1HRTH9GUULh8qIOG0U3rhX8Q7o22NWEqFdd2bh9-7RApCrvMfdIGC__v51oZr01m1Zr3asIzclP4gIKh-HTsMPrlsCdvlFcL1NYdH5LHOjD6jzVL6ADEG2YdFJlsgBPgkRQMUxwiSOynUS6db9o9E')" }}></div>
-            <div className="flex flex-col flex-1 min-w-0">
-              <p className="text-sm font-bold text-text-main truncate">Nombre del usuario</p>
-              <p className="text-xs text-text-secondary truncate">Nombredelusuario@kashio.com</p>
-            </div>
-            <button className="text-text-secondary hover:text-text-main">
-              <span className="material-symbols-outlined text-[20px]">logout</span>
-            </button>
-          </div>
+          <UserProfile />
         </div>
       </aside>
       <main className="flex-1 flex flex-col h-full overflow-hidden relative">
