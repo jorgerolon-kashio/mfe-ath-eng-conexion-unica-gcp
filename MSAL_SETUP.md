@@ -25,7 +25,8 @@ Para que la autenticación funcione correctamente, necesitas configurar los **Re
 ### Redirect URIs a Configurar
 
 1. **Desarrollo Local**: `http://localhost:5173`
-2. **Producción**: La URL base de tu aplicación en producción (ej: `https://tu-dominio.com`)
+2. **Desarrollo (Cloud Run)**: `https://mfe-ath-eng-conexion-unica-gcp-215989210525.us-central1.run.app`
+3. **Producción**: La URL base de tu aplicación en producción (ej: `https://tu-dominio.com`)
 
 ### Pasos para Configurar en Azure Portal
 
@@ -34,7 +35,8 @@ Para que la autenticación funcione correctamente, necesitas configurar los **Re
 3. Busca tu aplicación con el ID: `4c10af87-d1e8-4542-81c0-3da0383b7230`
 4. Ve a **Authentication** en el menú lateral
 5. En **Redirect URIs**, agrega:
-   - `http://localhost:5173` (para desarrollo)
+   - `http://localhost:5173` (para desarrollo local)
+   - `https://mfe-ath-eng-conexion-unica-gcp-215989210525.us-central1.run.app` (para desarrollo en Cloud Run)
    - Tu URL de producción (ej: `https://tu-dominio.com`)
 6. Guarda los cambios
 

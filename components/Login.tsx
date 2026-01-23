@@ -20,21 +20,27 @@ const Login: React.FC = () => {
       const accounts = instance.getAllAccounts();
       if (accounts.length > 0) {
         console.log('Ya hay una sesión activa');
+        setIsLoading(false);
         return;
       }
 
-      // Iniciar login
-      await instance.loginPopup(loginRequest);
+      // Usar loginRedirect en lugar de loginPopup para evitar bloqueos de popups
+      // Esto redirige a la página de Microsoft y luego vuelve a la app
+      await instance.loginRedirect(loginRequest);
+      // Nota: loginRedirect no retorna, redirige la página completa
     } catch (error: any) {
-      // Ignorar el error si es porque ya hay una interacción en curso
-      if (error.errorCode === 'interaction_in_progress') {
-        console.log('Interacción ya en curso, esperando...');
+      // Ignorar errores específicos que son normales
+      if (
+        error.errorCode === 'interaction_in_progress' ||
+        error.errorCode === 'block_nested_popups' ||
+        error.errorCode === 'no_token_request_cache_error'
+      ) {
+        console.log('Interacción en curso o error esperado:', error.errorCode);
       } else {
         console.error('Error durante el login:', error);
         alert('Error al iniciar sesión. Por favor, intenta nuevamente.');
+        setIsLoading(false);
       }
-    } finally {
-      setIsLoading(false);
     }
   };
 

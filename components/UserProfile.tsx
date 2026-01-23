@@ -6,7 +6,7 @@ const UserProfile: React.FC = () => {
   const account = useAccount(accounts[0] || {});
 
   const handleLogout = () => {
-    instance.logoutPopup({
+    instance.logoutRedirect({
       postLogoutRedirectUri: window.location.origin,
     });
   };

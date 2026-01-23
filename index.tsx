@@ -16,8 +16,11 @@ msalInstance.initialize().then(() => {
     if (response) {
       console.log('Login redirect completado:', response);
     }
-  }).catch((error) => {
-    console.error('Error en redirect:', error);
+  }).catch((error: any) => {
+    // Ignorar el error si no hay un token request en caché (es normal)
+    if (error.errorCode !== 'no_token_request_cache_error') {
+      console.error('Error en redirect:', error);
+    }
   });
 
   const rootElement = document.getElementById('root');
