@@ -47,6 +47,9 @@ export class KashioApiService {
     if (endpoint === '/kbrm/v2/party-roles' && service === 'KBRM') {
       return '/api/v1/party-roles';
     }
+    if (endpoint === '/kbrm/v2/individuals' && service === 'KBRM') {
+      return '/api/v1/individuals';
+    }
     if (endpoint === '/kbrm/v2/agreements' && service === 'KBRM') {
       return '/api/v1/agreements';
     }

@@ -1,22 +1,15 @@
 import React from 'react';
-import { useMsal, useAccount } from '@azure/msal-react';
+import { useAccount } from '@azure/msal-react';
 
 const UserProfile: React.FC = () => {
-  const { instance, accounts } = useMsal();
-  const account = useAccount(accounts[0] || {});
-
-  const handleLogout = () => {
-    instance.logoutRedirect({
-      postLogoutRedirectUri: window.location.origin,
-    });
-  };
+  const account = useAccount(null);
 
   if (!account) {
     return null;
   }
 
   return (
-    <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-background-light cursor-pointer transition-colors">
+    <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-background-light transition-colors">
       <div className="size-10 rounded-full bg-cover bg-center border border-border-light" style={{ 
         backgroundImage: `url('https://ui-avatars.com/api/?name=${encodeURIComponent(account.name || account.username)}&background=0057FF&color=fff')` 
       }}></div>
@@ -28,13 +21,6 @@ const UserProfile: React.FC = () => {
           {account.username}
         </p>
       </div>
-      <button 
-        onClick={handleLogout}
-        className="text-text-secondary hover:text-text-main"
-        title="Cerrar sesión"
-      >
-        <span className="material-symbols-outlined text-[20px]">logout</span>
-      </button>
     </div>
   );
 };

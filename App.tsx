@@ -92,6 +92,17 @@ const App: React.FC = () => {
   });
   const [savingStep, setSavingStep] = useState<number | null>(null);
   const [logs, setLogs] = useState<{msg: string, type: string, time: string}[]>([]);
+  const [savedItems, setSavedItems] = useState<{
+    individual: boolean;
+    address: boolean;
+    contact: boolean;
+    relationship: boolean;
+  }>({
+    individual: false,
+    address: false,
+    contact: false,
+    relationship: false
+  });
 
   const [environment] = useState<Environment>(() => {
     const envFromVar = import.meta.env.VITE_ENVIRONMENT;
@@ -178,15 +189,18 @@ const App: React.FC = () => {
 
       const orgCompleteResponse = await api.call('KBRM', '/organizations/complete', 'POST', orgCompletePayload);
       
+      // El BFF retorna: { success: true, data: { organization: {...}, party_role: {...} } }
       const orgData = orgCompleteResponse.data || orgCompleteResponse;
-      sessionCtx.organization_public_id = orgData.organization_public_id || orgData.data?.organization_public_id;
-      sessionCtx.organization_party_id = orgData.organization_party_id || orgData.data?.organization_party_id;
-      sessionCtx.party_role_public_id = orgData.party_role_public_id || orgData.data?.party_role_public_id;
-      sessionCtx.party_role_id = orgData.party_role_id || orgData.data?.party_role_id;
+      sessionCtx.organization_public_id = orgData.organization?.public_id || orgData.organization_public_id || orgData.data?.organization?.public_id || orgData.data?.organization_public_id;
+      sessionCtx.organization_party_id = orgData.organization?.party_id || orgData.organization_party_id || orgData.data?.organization?.party_id || orgData.data?.organization_party_id;
+      sessionCtx.party_role_public_id = orgData.party_role?.public_id || orgData.party_role_public_id || orgData.data?.party_role?.public_id || orgData.data?.party_role_public_id;
+      sessionCtx.party_role_id = orgData.party_role?.party_role_id || orgData.party_role_id || orgData.data?.party_role?.party_role_id || orgData.data?.party_role_id;
       sessionCtx.address_id = orgData.address_id || orgData.data?.address_id;
       
       setCtx(sessionCtx);
       setSavedSteps(prev => ({ ...prev, step1: true }));
+      // Marcar items que ya se crearon en el paso completo
+      setSavedItems(prev => ({ ...prev, address: true, contact: true }));
       addLog(`✓ Empresa registrada exitosamente. ID: ${sessionCtx.organization_public_id}`, 'success');
       
     } catch (err: any) {
@@ -324,10 +338,11 @@ const App: React.FC = () => {
 
       const userCompleteResponse = await api.call('KSEC', '/users/complete', 'POST', userCompletePayload);
       
+      // El BFF retorna: { success: true, data: { individual: {...}, user: {...} } }
       const userData = userCompleteResponse.data || userCompleteResponse;
-      sessionCtx.individual_public_id = userData.individual_public_id || userData.data?.individual_public_id;
-      sessionCtx.individual_party_id = userData.individual_party_id || userData.data?.individual_party_id;
-      sessionCtx.user_id_global = userData.user_id_global || userData.data?.user_id_global;
+      sessionCtx.individual_public_id = userData.individual?.public_id || userData.individual_public_id || userData.data?.individual?.public_id || userData.data?.individual_public_id;
+      sessionCtx.individual_party_id = userData.individual?.party_id || userData.individual_party_id || userData.data?.individual?.party_id || userData.data?.individual_party_id;
+      sessionCtx.user_id_global = userData.user?.public_id || userData.user_public_id || userData.user_id_global || userData.data?.user?.public_id || userData.data?.user_public_id || userData.data?.user_id_global;
       
       setCtx(sessionCtx);
       setSavedSteps(prev => ({ ...prev, step3: true }));
@@ -342,8 +357,208 @@ const App: React.FC = () => {
     }
   };
 
-  // Si no está autenticado, mostrar la pantalla de login
-  if (!isAuthenticated) {
+  // Función para crear Individuo
+  const createIndividual = async () => {
+    if (!onboardingData.first_name || !onboardingData.last_name) {
+      addLog('Por favor completa los nombres y apellidos', 'error');
+      return;
+    }
+
+    try {
+      addLog('Creando individuo...', 'info');
+      const individualPayload = {
+        first_name: onboardingData.first_name,
+        last_name: onboardingData.last_name,
+        full_name: `${onboardingData.first_name} ${onboardingData.last_name}`.trim(),
+        birth_date: onboardingData.birth_date || '1990-01-01',
+        status: 1
+      };
+
+      const individualResponse = await api.call('KBRM', '/kbrm/v2/individuals', 'POST', individualPayload);
+      // El BFF retorna: { is_success: true, data: { public_id, ... } }
+      const individualData = individualResponse.data || individualResponse;
+      const individualPublicId = individualData.data?.public_id || individualData.public_id;
+      const individualPartyId = individualData.data?.party_id || individualData.party_id;
+
+      setCtx(prev => ({
+        ...prev,
+        individual_public_id: individualPublicId,
+        individual_party_id: individualPartyId
+      }));
+
+      setSavedItems(prev => ({ ...prev, individual: true }));
+      addLog(`✓ Individuo creado exitosamente. ID: ${individualPublicId}`, 'success');
+    } catch (err: any) {
+      const errorMsg = err.message || JSON.stringify(err).substring(0, 200);
+      addLog(`Error al crear individuo: ${errorMsg}`, 'error');
+    }
+  };
+
+  // Función para guardar Dirección
+  const saveAddress = async () => {
+    if (!ctx.organization_party_id && !ctx.individual_party_id) {
+      addLog('Debes crear primero una Organización o Individuo', 'error');
+      return;
+    }
+
+    try {
+      addLog('Guardando dirección...', 'info');
+      const partyId = ctx.organization_party_id || ctx.individual_party_id;
+      
+      const addressPayload = {
+        country_code: onboardingData.address.country_code || 'PER',
+        region: onboardingData.address.region || 1116,
+        state_province: onboardingData.address.state_province || 8096,
+        city: onboardingData.address.city || 6813,
+        locality: onboardingData.address.locality || '',
+        postcode: onboardingData.address.postcode || '',
+        street_type: onboardingData.address.street_type || 6081,
+        street_name: onboardingData.address.street_name || '',
+        street_number: onboardingData.address.street_number || '',
+        street_nr_suffix: onboardingData.address.street_nr_suffix || '',
+        street_nr_last: onboardingData.address.street_nr_last || '',
+        street_nr_last_suffix: onboardingData.address.street_nr_last_suffix || '',
+        geographic_location_id: 1,
+        party_id: partyId
+      };
+
+      const addressResponse = await api.call('KBRM', '/kbrm/v2/address', 'POST', addressPayload);
+      const addressData = addressResponse.data || addressResponse;
+      const addressId = addressData.address_id || addressData.data?.address_id;
+
+      setCtx(prev => ({ ...prev, address_id: addressId }));
+      setSavedItems(prev => ({ ...prev, address: true }));
+      addLog(`✓ Dirección guardada exitosamente. ID: ${addressId}`, 'success');
+    } catch (err: any) {
+      const errorMsg = err.message || JSON.stringify(err).substring(0, 200);
+      addLog(`Error al guardar dirección: ${errorMsg}`, 'error');
+    }
+  };
+
+  // Función para crear Contact Medium
+  const createContactMedium = async () => {
+    if (!ctx.organization_party_id && !ctx.individual_party_id) {
+      addLog('Debes crear primero una Organización o Individuo', 'error');
+      return;
+    }
+
+    if (!onboardingData.email && !onboardingData.phone) {
+      addLog('Por favor ingresa un email o teléfono', 'error');
+      return;
+    }
+
+    try {
+      addLog('Creando medio de contacto...', 'info');
+      const partyId = ctx.organization_party_id || ctx.individual_party_id;
+      const startDate = new Date();
+      const endDate = new Date(2099, 11, 31);
+
+      const contacts = [];
+      
+      if (onboardingData.email) {
+        contacts.push({
+          contact_medium_type_id: 1,
+          contact_medium_type_name: 'Email',
+          email_address: onboardingData.email,
+          party_id: partyId,
+          preferred: true,
+          start_datetime: formatMySQLDateTime(startDate, '00:00:00'),
+          end_datetime: formatMySQLDateTime(endDate, '23:59:59'),
+          binding_datetime: formatMySQLDateTime(startDate, '00:00:00'),
+          status: 1
+        });
+      }
+
+      if (onboardingData.phone) {
+        contacts.push({
+          contact_medium_type_id: 2,
+          contact_medium_type_name: 'Phone',
+          number: onboardingData.phone,
+          party_id: partyId,
+          preferred: false,
+          start_datetime: formatMySQLDateTime(startDate, '00:00:00'),
+          end_datetime: formatMySQLDateTime(endDate, '23:59:59'),
+          binding_datetime: formatMySQLDateTime(startDate, '00:00:00'),
+          status: 1
+        });
+      }
+
+      for (const contact of contacts) {
+        await api.call('KBRM', '/kbrm/v2/contact-medium', 'POST', contact);
+      }
+
+      setSavedItems(prev => ({ ...prev, contact: true }));
+      addLog(`✓ Medio de contacto creado exitosamente`, 'success');
+    } catch (err: any) {
+      const errorMsg = err.message || JSON.stringify(err).substring(0, 200);
+      addLog(`Error al crear medio de contacto: ${errorMsg}`, 'error');
+    }
+  };
+
+  // Función para establecer Relationship
+  const createRelationship = async () => {
+    if (!onboardingData.parent_corporativo_party_role_public_id) {
+      addLog('Por favor ingresa el Party Role del Corporativo', 'error');
+      return;
+    }
+
+    if (!ctx.party_role_public_id) {
+      addLog('Debes crear primero un Party Role', 'error');
+      return;
+    }
+
+    try {
+      addLog('Estableciendo relación...', 'info');
+      
+      // Primero obtener el party_role_id del corporativo
+      const corporativoResponse = await api.call('KBRM', `/kbrm/v2/party-roles/${onboardingData.parent_corporativo_party_role_public_id}`, 'GET');
+      const corporativoData = corporativoResponse.data || corporativoResponse;
+      const corporativoPartyId = corporativoData.party_id || corporativoData.data?.party_id;
+
+      if (!corporativoPartyId) {
+        throw new Error('No se pudo obtener el Party ID del corporativo');
+      }
+
+      // Obtener el customer del corporativo
+      const customerResponse = await api.call('KBRM', `/kbrm/v2/customers/organization/${corporativoPartyId}`, 'GET');
+      const customerData = customerResponse.data || customerResponse;
+      const fromPartyRoleId = customerData.party_role?.party_role_id || customerData.data?.party_role?.party_role_id;
+
+      if (!fromPartyRoleId) {
+        throw new Error('No se pudo obtener el Party Role ID del corporativo');
+      }
+
+      // Obtener el party_role_id actual (del que estamos creando)
+      const currentPartyRoleResponse = await api.call('KBRM', `/kbrm/v2/party-roles/${ctx.party_role_public_id}`, 'GET');
+      const currentPartyRoleData = currentPartyRoleResponse.data || currentPartyRoleResponse;
+      const toPartyRoleId = currentPartyRoleData.party_role_id || currentPartyRoleData.data?.party_role_id;
+
+      if (!toPartyRoleId) {
+        throw new Error('No se pudo obtener el Party Role ID actual');
+      }
+
+      const relationshipPayload = {
+        from_party_role_id: fromPartyRoleId,
+        to_party_role_id: toPartyRoleId,
+        relationship_type_id: onboardingData.relationship_type_id || 2,
+        description: onboardingData.relationship_description || 'Relación entre Corporativo y Sucursal',
+        start_datetime: formatMySQLDateTime(new Date(), '00:00:00'),
+        end_datetime: formatMySQLDateTime(new Date(2099, 11, 31), '23:59:59'),
+        status: 1
+      };
+
+      const relationshipResponse = await api.call('KBRM', '/kbrm/v2/relationships', 'POST', relationshipPayload);
+      setSavedItems(prev => ({ ...prev, relationship: true }));
+      addLog(`✓ Relación establecida exitosamente`, 'success');
+    } catch (err: any) {
+      const errorMsg = err.message || JSON.stringify(err).substring(0, 200);
+      addLog(`Error al establecer relación: ${errorMsg}`, 'error');
+    }
+  };
+
+  // Omitir login en LOCAL, requerir autenticación en otros entornos
+  const shouldRequireAuth = environment !== 'LOCAL';
+  if (shouldRequireAuth && !isAuthenticated) {
     return <Login />;
   }
 
@@ -357,7 +572,7 @@ const App: React.FC = () => {
             </div>
             <h1 className="text-text-main text-lg font-bold leading-tight">
               Kashio
-              <span className="text-xs font-normal text-text-secondary ml-1">v1.2.33.7</span>
+              <span className="text-xs font-normal text-text-secondary ml-1">v1.0.0</span>
             </h1>
           </div>
         </div>
@@ -553,9 +768,13 @@ const App: React.FC = () => {
                       </label>
                     </div>
                     <div className="mt-4 flex justify-end">
-                      <button className="bg-primary hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg shadow-sm transition-colors text-sm flex items-center gap-2">
+                      <button
+                        onClick={createIndividual}
+                        disabled={savedItems.individual}
+                        className="bg-primary hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-lg shadow-sm transition-colors text-sm flex items-center gap-2"
+                      >
                         <span className="material-symbols-outlined text-[18px]">person_add</span>
-                        Crear Individuo
+                        {savedItems.individual ? 'Individuo Creado ✓' : 'Crear Individuo'}
                       </button>
                     </div>
                   </div>
@@ -712,9 +931,13 @@ const App: React.FC = () => {
                       </label>
                     </div>
                     <div className="mt-4 flex justify-end">
-                      <button className="bg-primary hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg shadow-sm transition-colors text-sm flex items-center gap-2">
+                      <button
+                        onClick={saveAddress}
+                        disabled={savedItems.address}
+                        className="bg-primary hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-lg shadow-sm transition-colors text-sm flex items-center gap-2"
+                      >
                         <span className="material-symbols-outlined text-[18px]">location_on</span>
-                        Guardar Dirección
+                        {savedItems.address ? 'Dirección Guardada ✓' : 'Guardar Dirección'}
                       </button>
                     </div>
                   </div>
@@ -769,9 +992,13 @@ const App: React.FC = () => {
                       </label>
                     </div>
                     <div className="mt-4 flex justify-end">
-                      <button className="bg-primary hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg shadow-sm transition-colors text-sm flex items-center gap-2">
+                      <button
+                        onClick={createContactMedium}
+                        disabled={savedItems.contact}
+                        className="bg-primary hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-lg shadow-sm transition-colors text-sm flex items-center gap-2"
+                      >
                         <span className="material-symbols-outlined text-[18px]">contact_phone</span>
-                        Crear Medio de Contacto
+                        {savedItems.contact ? 'Contacto Creado ✓' : 'Crear Medio de Contacto'}
                       </button>
                     </div>
                   </div>
@@ -811,9 +1038,13 @@ const App: React.FC = () => {
                       </label>
                     </div>
                     <div className="mt-4 flex justify-end">
-                      <button className="bg-primary hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg shadow-sm transition-colors text-sm flex items-center gap-2">
+                      <button
+                        onClick={createRelationship}
+                        disabled={savedItems.relationship || !savedSteps.step1}
+                        className="bg-primary hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-lg shadow-sm transition-colors text-sm flex items-center gap-2"
+                      >
                         <span className="material-symbols-outlined text-[18px]">handshake</span>
-                        Establecer Relación
+                        {savedItems.relationship ? 'Relación Establecida ✓' : 'Establecer Relación'}
                       </button>
                     </div>
                   </div>
