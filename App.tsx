@@ -556,9 +556,8 @@ const App: React.FC = () => {
     }
   };
 
-  // Omitir login en LOCAL, requerir autenticación en otros entornos
-  const shouldRequireAuth = environment !== 'LOCAL';
-  if (shouldRequireAuth && !isAuthenticated) {
+  // Siempre requerir autenticación de Microsoft
+  if (!isAuthenticated) {
     return <Login />;
   }
 

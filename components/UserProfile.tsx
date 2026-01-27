@@ -11,19 +11,9 @@ const UserProfile: React.FC = () => {
     });
   };
 
-  // En LOCAL no hay autenticación, mostrar placeholder
+  // Si no hay cuenta, no mostrar nada (el login se mostrará en App.tsx)
   if (!account) {
-    return (
-      <div className="flex items-center gap-3">
-        <div className="size-9 rounded-full bg-primary/10 border border-border-light flex items-center justify-center">
-          <span className="material-symbols-outlined text-primary text-[18px]">person</span>
-        </div>
-        <div className="flex flex-col min-w-0">
-          <p className="text-sm font-bold text-text-main">Usuario Local</p>
-          <p className="text-xs text-text-secondary">Modo desarrollo</p>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (
