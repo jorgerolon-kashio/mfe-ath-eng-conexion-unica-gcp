@@ -62,6 +62,9 @@ export class KashioApiService {
     if (endpoint === '/kbrm/v2/relationships' && service === 'KBRM') {
       return '/api/v1/relationships';
     }
+    if (endpoint === '/ksec/v1/users' && service === 'KSEC') {
+      return '/api/v1/users';
+    }
     if (endpoint.startsWith('/kbrm/v2/customers/') && service === 'KBRM' && !endpoint.includes('/api') && endpoint.split('/').length === 4) {
       const customerId = endpoint.split('/').pop();
       return `/api/v1/customers/${customerId}`;

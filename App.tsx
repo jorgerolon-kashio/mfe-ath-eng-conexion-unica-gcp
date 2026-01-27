@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useIsAuthenticated, useAccount } from '@azure/msal-react';
 import { 
   EnvironmentType, 
   EnvironmentConfig, 
@@ -22,8 +21,6 @@ import {
   getActiveContactMediumTypes,
   getActiveAgreementTypes
 } from './src/data/staticData';
-import Login from './components/Login';
-import UserProfile from './components/UserProfile';
 
 const PROGRESS_KEY = 'kashio_onboarding_v2';
 
@@ -80,9 +77,6 @@ const getOnboardingType = (partyRoleTypeId: number): 'CORPORATIVO' | 'SUCURSAL' 
 };
 
 const App: React.FC = () => {
-  const isAuthenticated = useIsAuthenticated();
-  const account = useAccount(null);
-
   const [onboardingData, setOnboardingData] = useState<OnboardingData>(INITIAL_ONBOARDING_DATA);
   const [ctx, setCtx] = useState<Record<string, any>>({});
   const [savedSteps, setSavedSteps] = useState<{step1: boolean, step2: boolean, step3: boolean}>({
@@ -105,11 +99,13 @@ const App: React.FC = () => {
   });
 
   const [environment] = useState<Environment>(() => {
-    const envFromVar = import.meta.env.VITE_ENVIRONMENT;
-    if (envFromVar && ['LOCAL', 'd1', 'q3'].includes(envFromVar)) {
-      return envFromVar as Environment;
-    }
-    return 'LOCAL';
+    // Acceder a la variable de entorno de Vite (usando any para evitar errores de TypeScript)
+    const envFromVar = (import.meta as any).env?.VITE_ENVIRONMENT;
+    // SIEMPRE usar LOCAL por defecto si no está definido o si estamos en localhost
+    const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    const finalEnv = (!envFromVar || !['LOCAL', 'd1', 'q3'].includes(envFromVar) || isLocalhost) ? 'LOCAL' : envFromVar as Environment;
+    console.log('[App] Environment detectado:', { envFromVar, isLocalhost, finalEnv, hostname: typeof window !== 'undefined' ? window.location.hostname : 'N/A' });
+    return finalEnv;
   });
 
   const envConfig = useMemo(() => {
@@ -122,94 +118,53 @@ const App: React.FC = () => {
     setLogs(prev => [...prev, { msg, type, time: new Date().toLocaleTimeString() }]);
   }, []);
 
-  const saveStep1 = async () => {
+  // Función para guardar solo la Organización
+  const saveOrganization = async () => {
     if (savingStep === 1 || savedSteps.step1) return;
     
     if (!onboardingData.legal_name) {
       addLog('Por favor completa la Razón Social', 'error');
       return;
     }
-    if (!onboardingData.party_role_type_id) {
-      addLog('Por favor selecciona el Tipo de Empresa', 'error');
-      return;
-    }
 
     setSavingStep(1);
-    addLog('Guardando información de la empresa...', 'info');
+    addLog('Guardando organización...', 'info');
 
     try {
       const sessionCtx: Record<string, any> = { ...ctx, executionId: ctx.executionId || Date.now().toString() };
-      
-      const allContacts = [
-        ...(onboardingData.party_role_contacts || []),
-        ...(onboardingData.email ? [{
-          contact_medium_type_id: 1,
-          contact_medium_type_name: 'Email',
-          email_address: onboardingData.email,
-          preferred: true
-        }] : []),
-        ...(onboardingData.phone ? [{
-          contact_medium_type_id: 2,
-          contact_medium_type_name: 'Phone',
-          phone: onboardingData.phone,
-          preferred: false
-        }] : [])
-      ];
 
-      const orgCompletePayload = {
+      const orgPayload = {
         legal_name: onboardingData.legal_name,
         web_site: onboardingData.website,
+        parent_relationship_id: null,
+        industry_id: onboardingData.industry_id || '1',
         other_name: onboardingData.other_name,
         source_reference: onboardingData.source_reference,
-        industry_id: onboardingData.industry_id || '1',
-        country_code: onboardingData.country || 'PER',
-        address: {
-          country_code: onboardingData.address.country_code || 'PER',
-          region: onboardingData.address.region || 1116,
-          state_province: onboardingData.address.state_province || 8096,
-          city: onboardingData.address.city || 6813,
-          locality: onboardingData.address.locality || '',
-          postcode: onboardingData.address.postcode || '',
-          street_type: onboardingData.address.street_type || 6081,
-          street_name: onboardingData.address.street_name || '',
-          street_number: onboardingData.address.street_number || '',
-          street_nr_suffix: onboardingData.address.street_nr_suffix || '',
-          street_nr_last: onboardingData.address.street_nr_last || '',
-          street_nr_last_suffix: onboardingData.address.street_nr_last_suffix || '',
-          external_reference_id: onboardingData.address.external_reference_id || ''
-        },
-        contacts: allContacts,
-        party_role_name: onboardingData.party_role_name || onboardingData.legal_name,
-        party_role_description: onboardingData.party_role_description || `Rol para ${onboardingData.legal_name}`,
-        party_role_type_id: onboardingData.party_role_type_id,
-        parent_corporativo_party_role_public_id: onboardingData.parent_corporativo_party_role_public_id || null,
-        relationship_type_id: onboardingData.relationship_type_id || 2,
-        relationship_description: onboardingData.relationship_description || 'Relación entre Corporativo y Sucursal'
+        status: 1,
+        country: { country_code: onboardingData.country || 'PER' }
       };
 
-      const orgCompleteResponse = await api.call('KBRM', '/organizations/complete', 'POST', orgCompletePayload);
+      const orgResponse = await api.call('KBRM', '/kbrm/v2/organizations', 'POST', orgPayload);
       
-      // El BFF retorna: { success: true, data: { organization: {...}, party_role: {...} } }
-      const orgData = orgCompleteResponse.data || orgCompleteResponse;
-      sessionCtx.organization_public_id = orgData.organization?.public_id || orgData.organization_public_id || orgData.data?.organization?.public_id || orgData.data?.organization_public_id;
-      sessionCtx.organization_party_id = orgData.organization?.party_id || orgData.organization_party_id || orgData.data?.organization?.party_id || orgData.data?.organization_party_id;
-      sessionCtx.party_role_public_id = orgData.party_role?.public_id || orgData.party_role_public_id || orgData.data?.party_role?.public_id || orgData.data?.party_role_public_id;
-      sessionCtx.party_role_id = orgData.party_role?.party_role_id || orgData.party_role_id || orgData.data?.party_role?.party_role_id || orgData.data?.party_role_id;
-      sessionCtx.address_id = orgData.address_id || orgData.data?.address_id;
+      // El BFF retorna: { data: { public_id, party_id, ... } }
+      const orgData = orgResponse.data || orgResponse;
+      sessionCtx.organization_public_id = orgData.data?.public_id || orgData.public_id;
+      sessionCtx.organization_party_id = orgData.data?.party_id || orgData.party_id;
       
       setCtx(sessionCtx);
       setSavedSteps(prev => ({ ...prev, step1: true }));
-      // Marcar items que ya se crearon en el paso completo
-      setSavedItems(prev => ({ ...prev, address: true, contact: true }));
-      addLog(`✓ Empresa registrada exitosamente. ID: ${sessionCtx.organization_public_id}`, 'success');
+      addLog(`✓ Organización creada exitosamente. ID: ${sessionCtx.organization_public_id}`, 'success');
       
     } catch (err: any) {
       const errorMsg = err.message || JSON.stringify(err).substring(0, 200);
-      addLog(`Error al guardar empresa: ${errorMsg}`, 'error');
+      addLog(`Error al guardar organización: ${errorMsg}`, 'error');
     } finally {
       setSavingStep(null);
     }
   };
+
+  // Mantener saveStep1 como alias para compatibilidad
+  const saveStep1 = saveOrganization;
 
   const saveStep2 = async () => {
     if (savingStep === 2 || savedSteps.step2 || !savedSteps.step1) return;
@@ -375,7 +330,7 @@ const App: React.FC = () => {
       };
 
       const individualResponse = await api.call('KBRM', '/kbrm/v2/individuals', 'POST', individualPayload);
-      // El BFF retorna: { is_success: true, data: { public_id, ... } }
+      // El BFF retorna: { data: { public_id, party_id, ... } }
       const individualData = individualResponse.data || individualResponse;
       const individualPublicId = individualData.data?.public_id || individualData.public_id;
       const individualPartyId = individualData.data?.party_id || individualData.party_id;
@@ -391,6 +346,54 @@ const App: React.FC = () => {
     } catch (err: any) {
       const errorMsg = err.message || JSON.stringify(err).substring(0, 200);
       addLog(`Error al crear individuo: ${errorMsg}`, 'error');
+    }
+  };
+
+  // Función para crear Party Role
+  const savePartyRole = async () => {
+    if (!ctx.organization_party_id && !ctx.individual_party_id) {
+      addLog('Debes crear primero una Organización o Individuo', 'error');
+      return;
+    }
+
+    if (!onboardingData.party_role_type_id) {
+      addLog('Por favor selecciona el Tipo de Empresa', 'error');
+      return;
+    }
+
+    try {
+      addLog('Creando party role...', 'info');
+      const partyId = ctx.organization_party_id || ctx.individual_party_id;
+      const startDate = new Date();
+      const endDate = new Date();
+      endDate.setFullYear(endDate.getFullYear() + 1);
+
+      const partyRolePayload = {
+        party_id: partyId,
+        name: onboardingData.party_role_name || onboardingData.legal_name || `${onboardingData.first_name} ${onboardingData.last_name}`.trim(),
+        description: onboardingData.party_role_description || `Party role for ${onboardingData.legal_name || onboardingData.first_name}`,
+        status_reason: onboardingData.party_role_status_reason || 'Active role',
+        status: 1,
+        party_role_type_id: onboardingData.party_role_type_id,
+        start_datetime: formatMySQLDateTime(startDate, '00:00:00'),
+        end_datetime: formatMySQLDateTime(endDate, '23:59:59')
+      };
+
+      const partyRoleResponse = await api.call('KBRM', '/kbrm/v2/party-roles', 'POST', partyRolePayload);
+      const partyRoleData = partyRoleResponse.data || partyRoleResponse;
+      const partyRolePublicId = partyRoleData.data?.public_id || partyRoleData.public_id;
+      const partyRoleId = partyRoleData.data?.party_role_id || partyRoleData.party_role_id;
+
+      setCtx(prev => ({
+        ...prev,
+        party_role_public_id: partyRolePublicId,
+        party_role_id: partyRoleId
+      }));
+
+      addLog(`✓ Party Role creado exitosamente. ID: ${partyRolePublicId}`, 'success');
+    } catch (err: any) {
+      const errorMsg = err.message || JSON.stringify(err).substring(0, 200);
+      addLog(`Error al crear party role: ${errorMsg}`, 'error');
     }
   };
 
@@ -424,7 +427,7 @@ const App: React.FC = () => {
 
       const addressResponse = await api.call('KBRM', '/kbrm/v2/address', 'POST', addressPayload);
       const addressData = addressResponse.data || addressResponse;
-      const addressId = addressData.address_id || addressData.data?.address_id;
+      const addressId = addressData.data?.address_id || addressData.address_id;
 
       setCtx(prev => ({ ...prev, address_id: addressId }));
       setSavedItems(prev => ({ ...prev, address: true }));
@@ -484,7 +487,12 @@ const App: React.FC = () => {
       }
 
       for (const contact of contacts) {
-        await api.call('KBRM', '/kbrm/v2/contact-medium', 'POST', contact);
+        const contactResponse = await api.call('KBRM', '/kbrm/v2/contact-medium', 'POST', contact);
+        // Opcional: guardar el ID del contact medium si se retorna
+        const contactData = contactResponse.data || contactResponse;
+        if (contactData.data?.contact_medium_id || contactData.contact_medium_id) {
+          addLog(`✓ Contact medium creado: ${contact.contact_medium_type_name}`, 'info');
+        }
       }
 
       setSavedItems(prev => ({ ...prev, contact: true }));
@@ -492,6 +500,53 @@ const App: React.FC = () => {
     } catch (err: any) {
       const errorMsg = err.message || JSON.stringify(err).substring(0, 200);
       addLog(`Error al crear medio de contacto: ${errorMsg}`, 'error');
+    }
+  };
+
+  // Función para crear Usuario en KSEC
+  const saveUser = async () => {
+    if (!ctx.organization_public_id) {
+      addLog('Debes crear primero una Organización', 'error');
+      return;
+    }
+
+    if (!onboardingData.first_name || !onboardingData.last_name) {
+      addLog('Por favor completa los nombres y apellidos', 'error');
+      return;
+    }
+
+    if (!onboardingData.email) {
+      addLog('Por favor ingresa un email', 'error');
+      return;
+    }
+
+    try {
+      addLog('Creando usuario en KSEC...', 'info');
+      
+      const userPayload = {
+        organization_public_id: ctx.organization_public_id,
+        first_name: onboardingData.first_name,
+        last_name: onboardingData.last_name,
+        email: onboardingData.email,
+        phone: onboardingData.user_phone || onboardingData.phone || '',
+        user_type_id: onboardingData.user_type_id || '1',
+        status: 1
+      };
+
+      const userResponse = await api.call('KSEC', '/ksec/v1/users', 'POST', userPayload);
+      const userData = userResponse.data || userResponse;
+      const userPublicId = userData.data?.public_id || userData.public_id;
+
+      setCtx(prev => ({
+        ...prev,
+        user_id_global: userPublicId,
+        user_public_id: userPublicId
+      }));
+
+      addLog(`✓ Usuario creado exitosamente en KSEC. ID: ${userPublicId}`, 'success');
+    } catch (err: any) {
+      const errorMsg = err.message || JSON.stringify(err).substring(0, 200);
+      addLog(`Error al crear usuario: ${errorMsg}`, 'error');
     }
   };
 
@@ -548,25 +603,24 @@ const App: React.FC = () => {
       };
 
       const relationshipResponse = await api.call('KBRM', '/kbrm/v2/relationships', 'POST', relationshipPayload);
+      const relationshipData = relationshipResponse.data || relationshipResponse;
+      const relationshipId = relationshipData.data?.relationship_id || relationshipData.relationship_id;
+      
+      setCtx(prev => ({ ...prev, relationship_id: relationshipId }));
       setSavedItems(prev => ({ ...prev, relationship: true }));
-      addLog(`✓ Relación establecida exitosamente`, 'success');
+      addLog(`✓ Relación establecida exitosamente. ID: ${relationshipId}`, 'success');
     } catch (err: any) {
       const errorMsg = err.message || JSON.stringify(err).substring(0, 200);
       addLog(`Error al establecer relación: ${errorMsg}`, 'error');
     }
   };
 
-  // Siempre requerir autenticación de Microsoft
-  if (!isAuthenticated) {
-    return <Login />;
-  }
-
   return (
     <div className="bg-background-light dark:bg-background-dark font-display text-text-main antialiased h-screen overflow-hidden flex flex-col">
       <header className="w-full bg-white dark:bg-[#1a202c] border-b border-border-light flex-shrink-0 z-20">
         <div className="max-w-[1400px] mx-auto w-full px-8">
           <div className="flex items-center justify-between h-16">
-            {/* Logo y versión a la izquierda */}
+            {/* Logo y versión */}
             <div className="flex items-center gap-3">
               <div className="size-8 rounded bg-primary flex items-center justify-center text-white">
                 <span className="material-symbols-outlined text-[20px]">verified_user</span>
@@ -575,10 +629,6 @@ const App: React.FC = () => {
                 Kashio
                 <span className="text-xs font-normal text-text-secondary ml-1">v1.0.0</span>
               </h1>
-            </div>
-            {/* Perfil de usuario y logout a la derecha */}
-            <div className="flex items-center">
-              <UserProfile />
             </div>
           </div>
         </div>
@@ -795,6 +845,16 @@ const App: React.FC = () => {
                           ))}
                         </select>
                       </label>
+                    </div>
+                    <div className="mt-4 flex justify-end">
+                      <button
+                        onClick={savePartyRole}
+                        disabled={!ctx.organization_party_id && !ctx.individual_party_id}
+                        className="bg-primary hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-lg shadow-sm transition-colors text-sm flex items-center gap-2"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">badge</span>
+                        {ctx.party_role_public_id ? 'Party Role Creado ✓' : 'Crear Party Role'}
+                      </button>
                     </div>
                   </div>
 
@@ -1117,6 +1177,16 @@ const App: React.FC = () => {
                           <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary text-[18px]">domain</span>
                         </div>
                       </label>
+                    </div>
+                    <div className="mt-4 flex justify-end">
+                      <button
+                        onClick={saveUser}
+                        disabled={!ctx.organization_public_id || !onboardingData.first_name || !onboardingData.last_name || !onboardingData.email}
+                        className="bg-primary hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-lg shadow-sm transition-colors text-sm flex items-center gap-2"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">person_add</span>
+                        {ctx.user_public_id ? 'Usuario Creado ✓' : 'Crear Usuario (KSEC)'}
+                      </button>
                     </div>
                   </div>
 

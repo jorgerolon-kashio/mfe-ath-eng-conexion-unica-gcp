@@ -1,7 +1,11 @@
 import React from 'react';
 import { useMsal, useAccount } from '@azure/msal-react';
 
-const UserProfile: React.FC = () => {
+interface UserProfileProps {
+  environment?: string;
+}
+
+const UserProfile: React.FC<UserProfileProps> = ({ environment }) => {
   const { instance } = useMsal();
   const account = useAccount(null);
 
@@ -11,7 +15,12 @@ const UserProfile: React.FC = () => {
     });
   };
 
-  // Si no hay cuenta, no mostrar nada (el login se mostrará en App.tsx)
+  // En LOCAL sin cuenta, no mostrar nada (no hay login requerido)
+  if (!account && environment === 'LOCAL') {
+    return null;
+  }
+
+  // En otros entornos sin cuenta, no mostrar nada (el login se mostrará en App.tsx)
   if (!account) {
     return null;
   }

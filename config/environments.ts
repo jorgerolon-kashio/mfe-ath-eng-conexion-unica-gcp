@@ -4,12 +4,20 @@
 // Si no está definida, se usa LOCAL por defecto
 export const BFF_URLS = {
   "LOCAL": "http://localhost:3003",
-  "d1": "http://localhost:3003", // El servicio local se conecta a d1
-  "q3": "http://localhost:3003", // El servicio local se conecta a q3
+  "d1": "https://d1-api.kashio-dev.net/ath-conexion-unica",
+  "q3": "https://q3-api.kashio-dev.net/ath-conexion-unica",
 };
 
 // Obtener URL del BFF desde variable de entorno o usar LOCAL por defecto
 export function getBffUrl(): string {
+  // Si estamos en localhost, SIEMPRE usar localhost:3003
+  if (typeof window !== 'undefined') {
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    if (isLocalhost) {
+      return BFF_URLS.LOCAL;
+    }
+  }
+  
   // Prioridad: VITE_BFF_URL > VITE_ENVIRONMENT > LOCAL
   if (import.meta.env.VITE_BFF_URL) {
     return import.meta.env.VITE_BFF_URL;
