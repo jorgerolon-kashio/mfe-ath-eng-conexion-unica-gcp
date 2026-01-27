@@ -563,26 +563,29 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="bg-background-light dark:bg-background-dark font-display text-text-main antialiased h-screen overflow-hidden flex">
-      <aside className="w-72 bg-white dark:bg-[#1a202c] border-r border-border-light flex flex-col h-full shrink-0 z-20">
-        <div className="p-6 border-b border-border-light/50">
-          <div className="flex items-center gap-3">
-            <div className="size-8 rounded bg-primary flex items-center justify-center text-white">
-              <span className="material-symbols-outlined text-[20px]">verified_user</span>
+    <div className="bg-background-light dark:bg-background-dark font-display text-text-main antialiased h-screen overflow-hidden flex flex-col">
+      <header className="w-full bg-white dark:bg-[#1a202c] border-b border-border-light flex-shrink-0 z-20">
+        <div className="max-w-[1400px] mx-auto w-full px-8">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo y versión a la izquierda */}
+            <div className="flex items-center gap-3">
+              <div className="size-8 rounded bg-primary flex items-center justify-center text-white">
+                <span className="material-symbols-outlined text-[20px]">verified_user</span>
+              </div>
+              <h1 className="text-text-main text-lg font-bold leading-tight">
+                Kashio
+                <span className="text-xs font-normal text-text-secondary ml-1">v1.0.0</span>
+              </h1>
             </div>
-            <h1 className="text-text-main text-lg font-bold leading-tight">
-              Kashio
-              <span className="text-xs font-normal text-text-secondary ml-1">v1.0.0</span>
-            </h1>
+            {/* Perfil de usuario y logout a la derecha */}
+            <div className="flex items-center">
+              <UserProfile />
+            </div>
           </div>
         </div>
-        <div className="flex-1"></div>
-        <div className="p-4 border-t border-border-light bg-white dark:bg-[#1a202c]">
-          <UserProfile />
-        </div>
-      </aside>
+      </header>
       <main className="flex-1 flex flex-col h-full overflow-hidden relative">
-        <header className="w-full bg-background-light pt-8 pb-4 px-8 flex-shrink-0">
+        <div className="w-full bg-background-light pt-8 pb-4 px-8 flex-shrink-0">
           <div className="max-w-[1400px] mx-auto w-full">
             <div className="flex items-center gap-2 mb-3 text-sm">
               <a className="text-text-secondary hover:text-primary transition-colors" href="#">Gestión de empresas</a>
@@ -600,7 +603,7 @@ const App: React.FC = () => {
               </div>
             </div>
           </div>
-        </header>
+        </div>
         <div className="flex-1 overflow-y-auto p-8 pt-2">
           <div className="max-w-[1400px] mx-auto w-full">
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 h-full pb-8">
