@@ -1,8 +1,15 @@
 import React from 'react';
-import { useAccount } from '@azure/msal-react';
+import { useMsal, useAccount } from '@azure/msal-react';
 
 const UserProfile: React.FC = () => {
+  const { instance } = useMsal();
   const account = useAccount(null);
+
+  const handleLogout = () => {
+    instance.logoutRedirect({
+      postLogoutRedirectUri: window.location.origin,
+    });
+  };
 
   if (!account) {
     return null;
@@ -21,6 +28,13 @@ const UserProfile: React.FC = () => {
           {account.username}
         </p>
       </div>
+      <button 
+        onClick={handleLogout}
+        className="text-text-secondary hover:text-text-main transition-colors"
+        title="Cerrar sesión"
+      >
+        <span className="material-symbols-outlined text-[20px]">logout</span>
+      </button>
     </div>
   );
 };
