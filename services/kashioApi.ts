@@ -28,54 +28,69 @@ export class KashioApiService {
     
     const servicePath = serviceMap[service] || service.toLowerCase();
     
+    // Extract query params if present
+    const [endpointPath, queryParams] = endpoint.split('?');
+    
     // Check for composite endpoints first (support both full and simplified paths)
-    if ((endpoint === '/organizations/complete' || endpoint === '/kbrm/v2/organizations/complete') && service === 'KBRM') {
-      return '/api/v1/organizations/complete';
+    if ((endpointPath === '/organizations/complete' || endpointPath === '/kbrm/v2/organizations/complete') && service === 'KBRM') {
+      return queryParams ? `/api/v1/organizations/complete?${queryParams}` : '/api/v1/organizations/complete';
     }
-    if ((endpoint === '/users/complete' || endpoint === '/ksec/v1/users/complete') && service === 'KSEC') {
-      return '/api/v1/users/complete';
+    if ((endpointPath === '/users/complete' || endpointPath === '/ksec/v1/users/complete') && service === 'KSEC') {
+      return queryParams ? `/api/v1/users/complete?${queryParams}` : '/api/v1/users/complete';
     }
     
     // Check for direct BFF endpoints (optimized paths for common operations)
     // These are handled by specific controllers in the BFF
-    if (endpoint === '/kbrm/v2/organizations' && service === 'KBRM') {
-      return '/api/v1/organizations';
+    if (endpointPath === '/kbrm/v2/organizations' && service === 'KBRM') {
+      return queryParams ? `/api/v1/organizations?${queryParams}` : '/api/v1/organizations';
     }
-    if (endpoint === '/kbrm/v2/customers' && service === 'KBRM') {
-      return '/api/v1/customers';
+    // Handle organizations with public_id (GET, PUT, DELETE)
+    if (endpointPath.startsWith('/kbrm/v2/organizations/') && service === 'KBRM') {
+      const publicId = endpointPath.replace('/kbrm/v2/organizations/', '');
+      return `/api/v1/organizations/${publicId}`;
     }
-    if (endpoint === '/kbrm/v2/party-roles' && service === 'KBRM') {
-      return '/api/v1/party-roles';
+    if (endpointPath === '/kbrm/v2/customers' && service === 'KBRM') {
+      return queryParams ? `/api/v1/customers?${queryParams}` : '/api/v1/customers';
     }
-    if (endpoint === '/kbrm/v2/individuals' && service === 'KBRM') {
-      return '/api/v1/individuals';
+    if (endpointPath === '/kbrm/v2/party-roles' && service === 'KBRM') {
+      return queryParams ? `/api/v1/party-roles?${queryParams}` : '/api/v1/party-roles';
     }
-    if (endpoint === '/kbrm/v2/agreements' && service === 'KBRM') {
-      return '/api/v1/agreements';
+    if (endpointPath === '/kbrm/v2/individuals' && service === 'KBRM') {
+      return queryParams ? `/api/v1/individuals?${queryParams}` : '/api/v1/individuals';
     }
-    if (endpoint === '/kbrm/v2/address' && service === 'KBRM') {
-      return '/api/v1/address';
+    if (endpointPath === '/kbrm/v2/agreements' && service === 'KBRM') {
+      return queryParams ? `/api/v1/agreements?${queryParams}` : '/api/v1/agreements';
     }
-    if (endpoint === '/kbrm/v2/contact-medium' && service === 'KBRM') {
-      return '/api/v1/contact-medium';
+    if (endpointPath === '/kbrm/v2/address' && service === 'KBRM') {
+      return queryParams ? `/api/v1/address?${queryParams}` : '/api/v1/address';
     }
-    if (endpoint === '/kbrm/v2/relationships' && service === 'KBRM') {
-      return '/api/v1/relationships';
+    if (endpointPath === '/kbrm/v2/contact-medium' && service === 'KBRM') {
+      return queryParams ? `/api/v1/contact-medium?${queryParams}` : '/api/v1/contact-medium';
     }
-    if (endpoint === '/ksec/v1/users' && service === 'KSEC') {
-      return '/api/v1/users';
+    if (endpointPath === '/kbrm/v2/relationships' && service === 'KBRM') {
+      return queryParams ? `/api/v1/relationships?${queryParams}` : '/api/v1/relationships';
     }
-    if (endpoint.startsWith('/kbrm/v2/customers/') && service === 'KBRM' && !endpoint.includes('/api') && endpoint.split('/').length === 4) {
-      const customerId = endpoint.split('/').pop();
+    if (endpointPath === '/ksec/v1/users' && service === 'KSEC') {
+      return queryParams ? `/api/v1/users?${queryParams}` : '/api/v1/users';
+    }
+    // Handle customers with ID
+    if (endpointPath.startsWith('/kbrm/v2/customers/') && service === 'KBRM') {
+      const customerId = endpointPath.replace('/kbrm/v2/customers/', '');
       return `/api/v1/customers/${customerId}`;
     }
-    if (endpoint.startsWith('/kbrm/v2/party-roles/') && service === 'KBRM') {
-      const partyRoleId = endpoint.split('/').pop();
+    // Handle party-roles with ID
+    if (endpointPath.startsWith('/kbrm/v2/party-roles/') && service === 'KBRM') {
+      const partyRoleId = endpointPath.replace('/kbrm/v2/party-roles/', '');
       return `/api/v1/party-roles/${partyRoleId}`;
     }
+    // Handle individuals with public_id (GET, PUT, DELETE)
+    if (endpointPath.startsWith('/kbrm/v2/individuals/') && service === 'KBRM') {
+      const publicId = endpointPath.replace('/kbrm/v2/individuals/', '');
+      return `/api/v1/individuals/${publicId}`;
+    }
     // Support for v1 endpoints (backward compatibility)
-    if (endpoint === '/kbrm/v1/organizations' && service === 'KBRM') {
-      return '/api/v1/organizations';
+    if (endpointPath === '/kbrm/v1/organizations' && service === 'KBRM') {
+      return queryParams ? `/api/v1/organizations?${queryParams}` : '/api/v1/organizations';
     }
     if (endpoint === '/kbrm/v1/customers' && service === 'KBRM') {
       return '/api/v1/customers';
@@ -109,12 +124,15 @@ export class KashioApiService {
     // Example: /api/v1/kbrm/kbrm/v1/individuals
     // Example: /api/v1/ksec/ksec/v1/users
     // Example: /api/v1/kcore-cus/customers
-    return `/api/v1/${servicePath}${endpoint}`;
+    return queryParams ? `/api/v1/${servicePath}${endpointPath}?${queryParams}` : `/api/v1/${servicePath}${endpointPath}`;
   }
 
   async call(service: string, endpoint: string, method: string, data?: any): Promise<any> {
+    // TEMPORAL: Si estamos en d1 y es KBRM, apuntar directamente a KBRM mientras resolvemos el Ingress
+    const useDirectKbrm = this.config.environment === 'd1' && service === 'KBRM' && !this.isMock;
+    
     // Always use BFF - it handles all microservice routing
-    const useBff = this.config.bff_url && !this.isMock;
+    const useBff = this.config.bff_url && !this.isMock && !useDirectKbrm;
     
     if (this.isMock) {
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -157,14 +175,20 @@ export class KashioApiService {
 
       let fullUrl: string;
       
-      if (!useBff) {
+      // TEMPORAL: Apuntar directamente a KBRM d1 mientras resolvemos el Ingress
+      if (useDirectKbrm) {
+        // El endpoint ya viene con /kbrm/v2/... así que solo necesitamos agregar la base URL
+        // Construir URL directa a KBRM
+        fullUrl = `https://d1-api.kashio-dev.net${endpoint}`;
+        console.log('[KashioApi] Using direct KBRM URL (temporal):', fullUrl);
+      } else if (!useBff) {
         throw new Error('BFF URL not configured. Please set environment to a valid value.');
+      } else {
+        // Always use BFF - it handles all microservice routing and authentication
+        const bffEndpoint = this.getBffEndpoint(service, endpoint);
+        fullUrl = `${this.config.bff_url}${bffEndpoint}`;
+        // BFF handles authentication internally, no need to add headers here
       }
-
-      // Always use BFF - it handles all microservice routing and authentication
-      const bffEndpoint = this.getBffEndpoint(service, endpoint);
-      fullUrl = `${this.config.bff_url}${bffEndpoint}`;
-      // BFF handles authentication internally, no need to add headers here
 
       const response = await fetch(fullUrl, {
         method,
