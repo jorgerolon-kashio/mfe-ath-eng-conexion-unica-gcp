@@ -241,6 +241,20 @@ const App: React.FC = () => {
     status: 1
   });
 
+  // Wizard state for subsidiary creation
+  const [subsidiaryWizardStep, setSubsidiaryWizardStep] = useState<number>(1);
+  const [subsidiaryWizardData, setSubsidiaryWizardData] = useState<{
+    basic: Partial<Organization>;
+    additional: Partial<Organization>;
+    contact?: Partial<ContactMedium>;
+    address?: Partial<Address>;
+  }>({
+    basic: { legal_name: '', country_code: 'PER', status: 1 },
+    additional: {},
+    contact: undefined,
+    address: undefined
+  });
+
   // Relationship modal state
   const [showRelationshipModal, setShowRelationshipModal] = useState<boolean>(false);
   const [relationshipFormData, setRelationshipFormData] = useState<{
@@ -1421,7 +1435,7 @@ const App: React.FC = () => {
 
   // ========== SUBSIDIARY FUNCTIONS ==========
   const handleCreateSubsidiary = async () => {
-    if (!detailEntity || detailType !== 'organization' || !subsidiaryFormData.legal_name) {
+    if (!detailEntity || detailType !== 'organization' || !subsidiaryWizardData.basic.legal_name) {
       setError('El nombre legal es requerido');
       return;
     }
@@ -1431,13 +1445,13 @@ const App: React.FC = () => {
     try {
       // 1. Crear la nueva organización (sucursal)
       const orgPayload = {
-        legal_name: subsidiaryFormData.legal_name,
-        business_name: subsidiaryFormData.business_name,
-        web_site: subsidiaryFormData.web_site,
-        country_code: subsidiaryFormData.country_code || 'PER',
-        other_name: subsidiaryFormData.other_name,
-        source_reference: subsidiaryFormData.source_reference,
-        status: subsidiaryFormData.status || 1
+        legal_name: subsidiaryWizardData.basic.legal_name,
+        business_name: subsidiaryWizardData.additional.business_name,
+        web_site: subsidiaryWizardData.additional.web_site,
+        country_code: subsidiaryWizardData.basic.country_code || 'PER',
+        other_name: subsidiaryWizardData.additional.other_name,
+        source_reference: subsidiaryWizardData.additional.source_reference,
+        status: subsidiaryWizardData.basic.status || 1
       };
 
       const newOrgResponse = await api.call('KBRM', '/kbrm/v2/organizations', 'POST', orgPayload);
@@ -1457,7 +1471,7 @@ const App: React.FC = () => {
       // 3. Crear Party Role para la sucursal
       const subsidiaryPartyRolePayload = {
         party_id: newOrgPartyId,
-        name: subsidiaryFormData.legal_name,
+        name: subsidiaryWizardData.basic.legal_name,
         description: `Sucursal de ${(detailEntity as Organization).legal_name}`,
         party_role_type_id: 1, // Tipo por defecto
         start_datetime: new Date().toISOString()
@@ -1478,11 +1492,89 @@ const App: React.FC = () => {
         await api.call('KBRM', '/kbrm/v2/relationships', 'POST', relationshipPayload);
       }
 
-      // 5. Actualizar organización con parent_relationship_id si es necesario
-      // (Esto se hace automáticamente cuando se crea la relación)
+      // 5. Crear contacto si existe
+      if (subsidiaryWizardData.contact && (subsidiaryWizardData.contact.email_address || subsidiaryWizardData.contact.number)) {
+        try {
+          const partyRolesResponse = await api.call('KBRM', `/kbrm/v2/party-roles?party_id=${newOrgPartyId}&limit=1`, 'GET');
+          const partyRolesData = partyRolesResponse?.data || (Array.isArray(partyRolesResponse) ? partyRolesResponse : []);
+          const firstRole = Array.isArray(partyRolesData) ? partyRolesData[0] : partyRolesData;
+          if (firstRole?.public_id) {
+            const partyRoleDetail = await api.call('KBRM', `/kbrm/v2/party-roles/${firstRole.public_id}`, 'GET');
+            const partyRoleId = partyRoleDetail?.data?.party_role_id || partyRoleDetail?.party_role_id;
+            if (partyRoleId) {
+              let geographicAddressId = null;
+              if (subsidiaryWizardData.address) {
+                const addressPayload: any = {
+                  country_code: subsidiaryWizardData.address.country_code || 'PER',
+                  region: 1116,
+                  state_province: 8096,
+                  city: 6813,
+                  status: 1,
+                  start_datetime: new Date().toISOString(),
+                  party_id: newOrgPartyId,
+                  ...subsidiaryWizardData.address
+                };
+                const newAddress = await api.call('KBRM', '/kbrm/v2/address', 'POST', addressPayload);
+                geographicAddressId = newAddress?.data?.geographic_address_id || newAddress?.geographic_address_id;
+              }
+              if (!geographicAddressId) {
+                const addressPayload: any = {
+                  country_code: 'PER',
+                  region: 1116,
+                  state_province: 8096,
+                  city: 6813,
+                  status: 1,
+                  start_datetime: new Date().toISOString(),
+                  party_id: newOrgPartyId
+                };
+                const newAddress = await api.call('KBRM', '/kbrm/v2/address', 'POST', addressPayload);
+                geographicAddressId = newAddress?.data?.geographic_address_id || newAddress?.geographic_address_id;
+              }
+              const contactPayload = {
+                geographic_address_id: geographicAddressId,
+                contact_medium_type_id: subsidiaryWizardData.contact.contact_medium_type_id || 1,
+                number: subsidiaryWizardData.contact.number || null,
+                email_address: subsidiaryWizardData.contact.email_address || null,
+                start_datetime: new Date().toISOString(),
+                status: 1,
+                preferred: subsidiaryWizardData.contact.preferred || false,
+                party_role_id: partyRoleId
+              };
+              await api.call('KBRM', '/kbrm/v2/contact-medium', 'POST', contactPayload);
+            }
+          }
+        } catch (err) {
+          console.warn('Error creando contacto:', err);
+        }
+      }
+
+      // 6. Crear dirección si existe
+      if (subsidiaryWizardData.address && subsidiaryWizardData.address.city) {
+        try {
+          const addressPayload: any = {
+            country_code: subsidiaryWizardData.address.country_code || 'PER',
+            region: 1116,
+            state_province: 8096,
+            city: 6813,
+            status: 1,
+            start_datetime: new Date().toISOString(),
+            party_id: newOrgPartyId,
+            ...subsidiaryWizardData.address
+          };
+          await api.call('KBRM', '/kbrm/v2/address', 'POST', addressPayload);
+        } catch (err) {
+          console.warn('Error creando dirección:', err);
+        }
+      }
 
       setShowSubsidiaryModal(false);
-      setSubsidiaryFormData({ legal_name: '', business_name: '', web_site: '', country_code: 'PER', other_name: '', source_reference: '', status: 1 });
+      setSubsidiaryWizardStep(1);
+      setSubsidiaryWizardData({
+        basic: { legal_name: '', country_code: 'PER', status: 1 },
+        additional: {},
+        contact: undefined,
+        address: undefined
+      });
       setSuccessMessage('Sucursal creada exitosamente');
       setTimeout(() => setSuccessMessage(null), 3000);
       
@@ -3471,16 +3563,18 @@ const App: React.FC = () => {
               >
                 Información
               </button>
-              <button
-                onClick={() => setDetailTab('relationships')}
-                className={`py-3 px-4 border-b-2 transition-colors ${
-                  detailTab === 'relationships'
-                    ? 'border-primary text-primary font-medium'
-                    : 'border-transparent text-text-secondary hover:text-text-main'
-                }`}
-              >
-                Relaciones
-              </button>
+              {detailType === 'organization' && (
+                <button
+                  onClick={() => setDetailTab('relationships')}
+                  className={`py-3 px-4 border-b-2 transition-colors ${
+                    detailTab === 'relationships'
+                      ? 'border-primary text-primary font-medium'
+                      : 'border-transparent text-text-secondary hover:text-text-main'
+                  }`}
+                >
+                  Relaciones
+                </button>
+              )}
             </div>
 
             {/* Content */}
@@ -3762,13 +3856,13 @@ const App: React.FC = () => {
                   )}
 
 
-                  {detailTab === 'relationships' && (
+                  {detailTab === 'relationships' && detailType === 'organization' && (
                     <div className="space-y-4">
                       <h3 className="text-lg font-semibold text-text-main">Relaciones</h3>
                       
                       {/* Party Roles */}
                       <div>
-                        <h4 className="text-md font-medium text-text-main mb-3">Roles de la {detailType === 'organization' ? 'Organización' : 'Persona'}</h4>
+                        <h4 className="text-md font-medium text-text-main mb-3">Roles de la Organización</h4>
                         {partyRoles.length === 0 ? (
                           <p className="text-text-secondary">No hay roles registrados</p>
                         ) : (
@@ -3780,11 +3874,6 @@ const App: React.FC = () => {
                                     <p className="text-text-main font-medium">{role.name}</p>
                                     <p className="text-text-secondary text-sm mt-1">{role.description || '-'}</p>
                                     <div className="flex gap-2 mt-2">
-                                      {role.role_type_name && (
-                                        <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
-                                          {role.role_type_name}
-                                        </span>
-                                      )}
                                       {role.status === 1 && (
                                         <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">
                                           Activo
@@ -4151,71 +4240,408 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Subsidiary Modal */}
+      {/* Subsidiary Wizard Modal */}
       {showSubsidiaryModal && detailEntity && detailType === 'organization' && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-[#1a202c] rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-[#1a202c] rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             <div className="p-6">
-              <h2 className="text-xl font-semibold text-text-main mb-4">Crear Sucursal</h2>
-              <p className="text-sm text-text-secondary mb-4">
-                Organización padre: <strong>{(detailEntity as Organization).legal_name}</strong>
-              </p>
-              <div className="space-y-4">
+              <div className="flex items-center justify-between mb-6">
                 <div>
-                  <label className="block text-sm font-medium text-text-main mb-1">Nombre Legal *</label>
-                  <input
-                    type="text"
-                    value={subsidiaryFormData.legal_name || ''}
-                    onChange={(e) => setSubsidiaryFormData({ ...subsidiaryFormData, legal_name: e.target.value })}
-                    className="w-full px-3 py-2 border border-border-light rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                    required
-                  />
+                  <h2 className="text-2xl font-bold text-text-main">Crear Sucursal</h2>
+                  <p className="text-sm text-text-secondary mt-1">
+                    Organización padre: <strong className="text-text-main">{(detailEntity as Organization).legal_name}</strong>
+                  </p>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-text-main mb-1">Nombre Comercial</label>
-                  <input
-                    type="text"
-                    value={subsidiaryFormData.business_name || ''}
-                    onChange={(e) => setSubsidiaryFormData({ ...subsidiaryFormData, business_name: e.target.value })}
-                    className="w-full px-3 py-2 border border-border-light rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-text-main mb-1">Sitio Web</label>
-                  <input
-                    type="url"
-                    value={subsidiaryFormData.web_site || ''}
-                    onChange={(e) => setSubsidiaryFormData({ ...subsidiaryFormData, web_site: e.target.value })}
-                    className="w-full px-3 py-2 border border-border-light rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-text-main mb-1">País</label>
-                  <input
-                    type="text"
-                    value={subsidiaryFormData.country_code || 'PER'}
-                    onChange={(e) => setSubsidiaryFormData({ ...subsidiaryFormData, country_code: e.target.value })}
-                    className="w-full px-3 py-2 border border-border-light rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                  />
-                </div>
-              </div>
-              <div className="flex items-center justify-end gap-3 mt-6">
                 <button
                   onClick={() => {
                     setShowSubsidiaryModal(false);
-                    setSubsidiaryFormData({ legal_name: '', business_name: '', web_site: '', country_code: 'PER', other_name: '', source_reference: '', status: 1 });
+                    setSubsidiaryWizardStep(1);
+                    setSubsidiaryWizardData({
+                      basic: { legal_name: '', country_code: 'PER', status: 1 },
+                      additional: {},
+                      contact: undefined,
+                      address: undefined
+                    });
+                  }}
+                  className="text-text-secondary hover:text-text-main transition-colors"
+                >
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
+
+              {/* Progress Steps */}
+              <div className="mb-6 flex items-center justify-between">
+                {[1, 2, 3, 4].map((step) => (
+                  <div key={step} className="flex items-center flex-1">
+                    <div className="flex flex-col items-center flex-1">
+                      <div
+                        className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm transition-colors ${
+                          subsidiaryWizardStep === step
+                            ? 'bg-primary text-white'
+                            : subsidiaryWizardStep > step
+                              ? 'bg-green-500 text-white'
+                              : 'bg-gray-200 text-text-secondary'
+                        }`}
+                      >
+                        {subsidiaryWizardStep > step ? '✓' : step}
+                      </div>
+                      <p
+                        className={`mt-2 text-xs text-center ${
+                          subsidiaryWizardStep >= step ? 'text-text-main' : 'text-text-secondary'
+                        }`}
+                      >
+                        {step === 1 && 'Básico'}
+                        {step === 2 && 'Adicional'}
+                        {step === 3 && 'Contacto'}
+                        {step === 4 && 'Dirección'}
+                      </p>
+                    </div>
+                    {step < 4 && (
+                      <div
+                        className={`h-1 flex-1 mx-2 transition-colors ${
+                          subsidiaryWizardStep > step ? 'bg-green-500' : 'bg-gray-200'
+                        }`}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="border-t border-border-light pt-6">
+                {subsidiaryWizardStep === 1 && (
+                  <div className="space-y-4">
+                    <div className="mb-6">
+                      <h4 className="text-lg font-semibold text-text-main mb-2">📋 Información Básica</h4>
+                      <p className="text-sm text-text-secondary">Completa los datos esenciales de la sucursal</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-text-main mb-1.5">
+                        Nombre Legal <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={subsidiaryWizardData.basic.legal_name || ''}
+                        onChange={(e) => setSubsidiaryWizardData({
+                          ...subsidiaryWizardData,
+                          basic: { ...subsidiaryWizardData.basic, legal_name: e.target.value }
+                        })}
+                        className="w-full px-4 py-2 border border-border-light rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                        placeholder="Ej. Sucursal Lima S.A."
+                      />
+                      <p className="mt-1 text-xs text-text-secondary">💡 Nombre registrado en documentos oficiales</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-text-main mb-1.5">
+                        País <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={subsidiaryWizardData.basic.country_code || 'PER'}
+                        onChange={(e) => setSubsidiaryWizardData({
+                          ...subsidiaryWizardData,
+                          basic: { ...subsidiaryWizardData.basic, country_code: e.target.value }
+                        })}
+                        className="w-full px-4 py-2 border border-border-light rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                      >
+                        <option value="PER">🇵🇪 Perú</option>
+                        <option value="MEX">🇲🇽 México</option>
+                        <option value="COL">🇨🇴 Colombia</option>
+                        <option value="CHL">🇨🇱 Chile</option>
+                        <option value="ARG">🇦🇷 Argentina</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+                {subsidiaryWizardStep === 2 && (
+                  <div className="space-y-4">
+                    <div className="mb-6">
+                      <h4 className="text-lg font-semibold text-text-main mb-2">📝 Información Adicional</h4>
+                      <p className="text-sm text-text-secondary">Estos campos son opcionales, puedes completarlos más tarde</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-text-main mb-1.5">
+                        Nombre Comercial
+                      </label>
+                      <input
+                        type="text"
+                        value={subsidiaryWizardData.additional.business_name || ''}
+                        onChange={(e) => setSubsidiaryWizardData({
+                          ...subsidiaryWizardData,
+                          additional: { ...subsidiaryWizardData.additional, business_name: e.target.value }
+                        })}
+                        className="w-full px-4 py-2 border border-border-light rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                        placeholder="Ej. Sucursal Lima"
+                      />
+                      <p className="mt-1 text-xs text-text-secondary">💡 Nombre con el que se conoce públicamente</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-text-main mb-1.5">
+                        Sitio Web
+                      </label>
+                      <input
+                        type="url"
+                        value={subsidiaryWizardData.additional.web_site || ''}
+                        onChange={(e) => setSubsidiaryWizardData({
+                          ...subsidiaryWizardData,
+                          additional: { ...subsidiaryWizardData.additional, web_site: e.target.value }
+                        })}
+                        className="w-full px-4 py-2 border border-border-light rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                        placeholder="https://www.ejemplo.com"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-text-main mb-1.5">
+                        Nombre Alternativo
+                      </label>
+                      <input
+                        type="text"
+                        value={subsidiaryWizardData.additional.other_name || ''}
+                        onChange={(e) => setSubsidiaryWizardData({
+                          ...subsidiaryWizardData,
+                          additional: { ...subsidiaryWizardData.additional, other_name: e.target.value }
+                        })}
+                        className="w-full px-4 py-2 border border-border-light rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                        placeholder="Otro nombre o alias"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-text-main mb-1.5">
+                        Referencia Externa
+                      </label>
+                      <input
+                        type="text"
+                        value={subsidiaryWizardData.additional.source_reference || ''}
+                        onChange={(e) => setSubsidiaryWizardData({
+                          ...subsidiaryWizardData,
+                          additional: { ...subsidiaryWizardData.additional, source_reference: e.target.value }
+                        })}
+                        className="w-full px-4 py-2 border border-border-light rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                        placeholder="Ej. ZOHO-ID-001"
+                      />
+                      <p className="mt-1 text-xs text-text-secondary">💡 ID de otro sistema si aplica</p>
+                    </div>
+                  </div>
+                )}
+                {subsidiaryWizardStep === 3 && (
+                  <div className="space-y-4">
+                    <div className="mb-6">
+                      <h4 className="text-lg font-semibold text-text-main mb-2">📞 Información de Contacto</h4>
+                      <p className="text-sm text-text-secondary">Puedes agregar contactos ahora o más tarde desde el detalle</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-text-main mb-1.5">
+                        Tipo de Contacto
+                      </label>
+                      <select
+                        value={subsidiaryWizardData.contact?.contact_medium_type_id ?? 1}
+                        onChange={(e) => {
+                          const typeId = parseInt(e.target.value);
+                          setSubsidiaryWizardData({
+                            ...subsidiaryWizardData,
+                            contact: {
+                              contact_medium_type_id: typeId,
+                              status: 1,
+                              preferred: false,
+                              email_address: typeId === 1 ? (subsidiaryWizardData.contact?.email_address || '') : undefined,
+                              number: typeId !== 1 ? (subsidiaryWizardData.contact?.number || '') : undefined
+                            }
+                          });
+                        }}
+                        className="w-full px-4 py-2 border border-border-light rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                      >
+                        <option value={1}>📧 Email</option>
+                        <option value={2}>📞 Teléfono</option>
+                        <option value={3}>📱 Móvil</option>
+                      </select>
+                    </div>
+                    {(subsidiaryWizardData.contact?.contact_medium_type_id ?? 1) === 1 ? (
+                      <div>
+                        <label className="block text-sm font-semibold text-text-main mb-1.5">
+                          Email
+                        </label>
+                        <input
+                          type="email"
+                          value={subsidiaryWizardData.contact?.email_address || ''}
+                          onChange={(e) => setSubsidiaryWizardData({
+                            ...subsidiaryWizardData,
+                            contact: { 
+                              ...subsidiaryWizardData.contact, 
+                              contact_medium_type_id: subsidiaryWizardData.contact?.contact_medium_type_id ?? 1,
+                              email_address: e.target.value,
+                              number: undefined
+                            }
+                          })}
+                          className="w-full px-4 py-2 border border-border-light rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                          placeholder="contacto@ejemplo.com"
+                        />
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="block text-sm font-semibold text-text-main mb-1.5">
+                          Número
+                        </label>
+                        <input
+                          type="tel"
+                          value={subsidiaryWizardData.contact?.number || ''}
+                          onChange={(e) => setSubsidiaryWizardData({
+                            ...subsidiaryWizardData,
+                            contact: { 
+                              ...subsidiaryWizardData.contact, 
+                              contact_medium_type_id: subsidiaryWizardData.contact?.contact_medium_type_id ?? 2,
+                              number: e.target.value,
+                              email_address: undefined
+                            }
+                          })}
+                          className="w-full px-4 py-2 border border-border-light rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                          placeholder="+51 999 999 999"
+                        />
+                      </div>
+                    )}
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={subsidiaryWizardData.contact?.preferred || false}
+                        onChange={(e) => setSubsidiaryWizardData({
+                          ...subsidiaryWizardData,
+                          contact: { ...subsidiaryWizardData.contact, preferred: e.target.checked }
+                        })}
+                        className="mr-2"
+                      />
+                      <label className="text-sm text-text-main">Marcar como contacto preferido</label>
+                    </div>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <p className="text-sm text-blue-800">💡 Puedes omitir este paso y agregar contactos después desde el detalle de la sucursal</p>
+                    </div>
+                  </div>
+                )}
+                {subsidiaryWizardStep === 4 && (
+                  <div className="space-y-4">
+                    <div className="mb-6">
+                      <h4 className="text-lg font-semibold text-text-main mb-2">📍 Dirección</h4>
+                      <p className="text-sm text-text-secondary">Puedes agregar la dirección ahora o más tarde desde el detalle</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-text-main mb-1.5">
+                          País
+                        </label>
+                        <select
+                          value={subsidiaryWizardData.address?.country_code || 'PER'}
+                          onChange={(e) => setSubsidiaryWizardData({
+                            ...subsidiaryWizardData,
+                            address: { ...subsidiaryWizardData.address, country_code: e.target.value, status: 1 }
+                          })}
+                          className="w-full px-4 py-2 border border-border-light rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                        >
+                          <option value="PER">🇵🇪 Perú</option>
+                          <option value="MEX">🇲🇽 México</option>
+                          <option value="COL">🇨🇴 Colombia</option>
+                          <option value="CHL">🇨🇱 Chile</option>
+                          <option value="ARG">🇦🇷 Argentina</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-text-main mb-1.5">
+                          Ciudad
+                        </label>
+                        <input
+                          type="text"
+                          value={subsidiaryWizardData.address?.city || ''}
+                          onChange={(e) => setSubsidiaryWizardData({
+                            ...subsidiaryWizardData,
+                            address: { ...subsidiaryWizardData.address, city: e.target.value }
+                          })}
+                          className="w-full px-4 py-2 border border-border-light rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                          placeholder="Ej. Lima"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-text-main mb-1.5">
+                          Nombre de Calle
+                        </label>
+                        <input
+                          type="text"
+                          value={subsidiaryWizardData.address?.street_name || ''}
+                          onChange={(e) => setSubsidiaryWizardData({
+                            ...subsidiaryWizardData,
+                            address: { ...subsidiaryWizardData.address, street_name: e.target.value }
+                          })}
+                          className="w-full px-4 py-2 border border-border-light rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                          placeholder="Ej. Av. Principal"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-text-main mb-1.5">
+                          Número
+                        </label>
+                        <input
+                          type="text"
+                          value={subsidiaryWizardData.address?.street_number || ''}
+                          onChange={(e) => setSubsidiaryWizardData({
+                            ...subsidiaryWizardData,
+                            address: { ...subsidiaryWizardData.address, street_number: e.target.value }
+                          })}
+                          className="w-full px-4 py-2 border border-border-light rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                          placeholder="123"
+                        />
+                      </div>
+                    </div>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <p className="text-sm text-blue-800">💡 Puedes omitir este paso y agregar direcciones después desde el detalle de la sucursal</p>
+                    </div>
+                  </div>
+                )}
+                {error && (
+                  <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-800">{error}</p>
+                  </div>
+                )}
+              </div>
+              <div className="px-6 py-4 border-t border-border-light flex justify-between">
+                <button
+                  onClick={() => {
+                    if (subsidiaryWizardStep > 1) {
+                      setSubsidiaryWizardStep(subsidiaryWizardStep - 1);
+                    } else {
+                      setShowSubsidiaryModal(false);
+                      setSubsidiaryWizardStep(1);
+                      setSubsidiaryWizardData({
+                        basic: { legal_name: '', country_code: 'PER', status: 1 },
+                        additional: {},
+                        contact: undefined,
+                        address: undefined
+                      });
+                    }
                   }}
                   className="px-4 py-2 text-sm font-medium text-text-main bg-white border border-border-light rounded-lg hover:bg-gray-50 transition-colors"
                 >
-                  Cancelar
+                  {subsidiaryWizardStep === 1 ? 'Cancelar' : 'Anterior'}
                 </button>
-                <button
-                  onClick={handleCreateSubsidiary}
-                  disabled={loading}
-                  className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? 'Creando...' : 'Crear Sucursal'}
-                </button>
+                <div className="flex gap-3">
+                  {subsidiaryWizardStep < 4 && (
+                    <button
+                      onClick={() => {
+                        if (subsidiaryWizardStep === 1 && !subsidiaryWizardData.basic.legal_name) {
+                          setError('El nombre legal es requerido');
+                          return;
+                        }
+                        setError(null);
+                        setSubsidiaryWizardStep(subsidiaryWizardStep + 1);
+                      }}
+                      className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors"
+                    >
+                      Siguiente
+                    </button>
+                  )}
+                  {subsidiaryWizardStep === 4 && (
+                    <button
+                      onClick={handleCreateSubsidiary}
+                      disabled={loading || !subsidiaryWizardData.basic.legal_name}
+                      className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {loading ? 'Creando...' : 'Crear Sucursal'}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
