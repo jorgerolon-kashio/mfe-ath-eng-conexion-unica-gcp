@@ -1778,6 +1778,13 @@ const App: React.FC = () => {
                             source_reference: '',
                             status: 1
                           });
+                          setOrgWizardStep(1);
+                          setOrgWizardData({
+                            basic: { legal_name: '', country_code: 'PER', status: 1 },
+                            additional: {},
+                            contact: undefined,
+                            address: undefined
+                          });
                           setShowOrgModal(true);
                         } else {
                           setEditingInd(null);
@@ -2239,7 +2246,7 @@ const App: React.FC = () => {
                   </div>
                   {/* Progress Steps */}
                   <div className="flex items-center justify-between">
-                    {[1, 2, 3, 4].map((step) => (
+                    {[1, 2].map((step) => (
                       <React.Fragment key={step}>
                         <div className="flex items-center">
                           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
@@ -2254,13 +2261,11 @@ const App: React.FC = () => {
                           <span className={`ml-2 text-xs font-medium ${
                             orgWizardStep >= step ? 'text-text-main' : 'text-text-secondary'
                           }`}>
-                            {step === 1 && 'Básica'}
-                            {step === 2 && 'Adicional'}
-                            {step === 3 && 'Contacto'}
-                            {step === 4 && 'Dirección'}
+                            {step === 1 && 'Información Principal'}
+                            {step === 2 && 'Opcional'}
                           </span>
                         </div>
-                        {step < 4 && (
+                        {step < 2 && (
                           <div className={`flex-1 h-0.5 mx-2 ${
                             orgWizardStep > step ? 'bg-green-500' : 'bg-gray-200'
                           }`} />
@@ -2273,7 +2278,7 @@ const App: React.FC = () => {
                   {orgWizardStep === 1 && (
                     <div className="space-y-4">
                       <div className="mb-6">
-                        <h4 className="text-lg font-semibold text-text-main mb-2">📋 Información Básica</h4>
+                        <h4 className="text-lg font-semibold text-text-main mb-2">📋 Información Principal</h4>
                         <p className="text-sm text-text-secondary">Completa los datos esenciales de la organización</p>
                       </div>
                       <div>
@@ -2292,48 +2297,41 @@ const App: React.FC = () => {
                         />
                         <p className="mt-1 text-xs text-text-secondary">💡 Nombre registrado en documentos oficiales</p>
                       </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-text-main mb-1.5">
-                          País <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                          value={orgWizardData.basic.country_code || 'PER'}
-                          onChange={(e) => setOrgWizardData({
-                            ...orgWizardData,
-                            basic: { ...orgWizardData.basic, country_code: e.target.value }
-                          })}
-                          className="w-full px-4 py-2 border border-border-light rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none"
-                        >
-                          <option value="PER">🇵🇪 Perú</option>
-                          <option value="MEX">🇲🇽 México</option>
-                          <option value="COL">🇨🇴 Colombia</option>
-                          <option value="CHL">🇨🇱 Chile</option>
-                          <option value="ARG">🇦🇷 Argentina</option>
-                        </select>
-                      </div>
-                    </div>
-                  )}
-                  {orgWizardStep === 2 && (
-                    <div className="space-y-4">
-                      <div className="mb-6">
-                        <h4 className="text-lg font-semibold text-text-main mb-2">📝 Información Adicional</h4>
-                        <p className="text-sm text-text-secondary">Estos campos son opcionales, puedes completarlos más tarde</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-text-main mb-1.5">
-                          Nombre Comercial
-                        </label>
-                        <input
-                          type="text"
-                          value={orgWizardData.additional.business_name || ''}
-                          onChange={(e) => setOrgWizardData({
-                            ...orgWizardData,
-                            additional: { ...orgWizardData.additional, business_name: e.target.value }
-                          })}
-                          className="w-full px-4 py-2 border border-border-light rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none"
-                          placeholder="Ej. Kashio App"
-                        />
-                        <p className="mt-1 text-xs text-text-secondary">💡 Nombre con el que se conoce públicamente</p>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-semibold text-text-main mb-1.5">
+                            País <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            value={orgWizardData.basic.country_code || 'PER'}
+                            onChange={(e) => setOrgWizardData({
+                              ...orgWizardData,
+                              basic: { ...orgWizardData.basic, country_code: e.target.value }
+                            })}
+                            className="w-full px-4 py-2 border border-border-light rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                          >
+                            <option value="PER">🇵🇪 Perú</option>
+                            <option value="MEX">🇲🇽 México</option>
+                            <option value="COL">🇨🇴 Colombia</option>
+                            <option value="CHL">🇨🇱 Chile</option>
+                            <option value="ARG">🇦🇷 Argentina</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-text-main mb-1.5">
+                            Nombre Comercial
+                          </label>
+                          <input
+                            type="text"
+                            value={orgWizardData.additional.business_name || ''}
+                            onChange={(e) => setOrgWizardData({
+                              ...orgWizardData,
+                              additional: { ...orgWizardData.additional, business_name: e.target.value }
+                            })}
+                            className="w-full px-4 py-2 border border-border-light rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                            placeholder="Ej. Kashio App"
+                          />
+                        </div>
                       </div>
                       <div>
                         <label className="block text-sm font-semibold text-text-main mb-1.5">
@@ -2350,45 +2348,50 @@ const App: React.FC = () => {
                           placeholder="https://www.ejemplo.com"
                         />
                       </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-text-main mb-1.5">
-                          Nombre Alternativo
-                        </label>
-                        <input
-                          type="text"
-                          value={orgWizardData.additional.other_name || ''}
-                          onChange={(e) => setOrgWizardData({
-                            ...orgWizardData,
-                            additional: { ...orgWizardData.additional, other_name: e.target.value }
-                          })}
-                          className="w-full px-4 py-2 border border-border-light rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none"
-                          placeholder="Otro nombre o alias"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-text-main mb-1.5">
-                          Referencia Externa
-                        </label>
-                        <input
-                          type="text"
-                          value={orgWizardData.additional.source_reference || ''}
-                          onChange={(e) => setOrgWizardData({
-                            ...orgWizardData,
-                            additional: { ...orgWizardData.additional, source_reference: e.target.value }
-                          })}
-                          className="w-full px-4 py-2 border border-border-light rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none"
-                          placeholder="Ej. ZOHO-ID-001"
-                        />
-                        <p className="mt-1 text-xs text-text-secondary">💡 ID de otro sistema si aplica</p>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-semibold text-text-main mb-1.5">
+                            Nombre Alternativo
+                          </label>
+                          <input
+                            type="text"
+                            value={orgWizardData.additional.other_name || ''}
+                            onChange={(e) => setOrgWizardData({
+                              ...orgWizardData,
+                              additional: { ...orgWizardData.additional, other_name: e.target.value }
+                            })}
+                            className="w-full px-4 py-2 border border-border-light rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                            placeholder="Otro nombre o alias"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-text-main mb-1.5">
+                            Referencia Externa
+                          </label>
+                          <input
+                            type="text"
+                            value={orgWizardData.additional.source_reference || ''}
+                            onChange={(e) => setOrgWizardData({
+                              ...orgWizardData,
+                              additional: { ...orgWizardData.additional, source_reference: e.target.value }
+                            })}
+                            className="w-full px-4 py-2 border border-border-light rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                            placeholder="Ej. ZOHO-ID-001"
+                          />
+                        </div>
                       </div>
                     </div>
                   )}
-                  {orgWizardStep === 3 && (
-                    <div className="space-y-4">
+                  {orgWizardStep === 2 && (
+                    <div className="space-y-6">
                       <div className="mb-6">
-                        <h4 className="text-lg font-semibold text-text-main mb-2">📞 Información de Contacto</h4>
-                        <p className="text-sm text-text-secondary">Puedes agregar contactos ahora o más tarde desde el detalle</p>
+                        <h4 className="text-lg font-semibold text-text-main mb-2">📞 Información Opcional</h4>
+                        <p className="text-sm text-text-secondary">Puedes agregar contacto y dirección ahora o más tarde desde el detalle</p>
                       </div>
+                      
+                      {/* Contacto */}
+                      <div className="border border-border-light rounded-lg p-4">
+                        <h5 className="text-md font-semibold text-text-main mb-4">Contacto</h5>
                       <div>
                         <label className="block text-sm font-semibold text-text-main mb-1.5">
                           Tipo de Contacto
@@ -2416,7 +2419,7 @@ const App: React.FC = () => {
                         </select>
                       </div>
                       {(orgWizardData.contact?.contact_medium_type_id ?? 1) === 1 ? (
-                        <div>
+                        <div className="mt-3">
                           <label className="block text-sm font-semibold text-text-main mb-1.5">
                             Email
                           </label>
@@ -2437,7 +2440,7 @@ const App: React.FC = () => {
                           />
                         </div>
                       ) : (
-                        <div>
+                        <div className="mt-3">
                           <label className="block text-sm font-semibold text-text-main mb-1.5">
                             Número
                           </label>
@@ -2458,7 +2461,7 @@ const App: React.FC = () => {
                           />
                         </div>
                       )}
-                      <div className="flex items-center">
+                      <div className="flex items-center mt-3">
                         <input
                           type="checkbox"
                           checked={orgWizardData.contact?.preferred || false}
@@ -2470,17 +2473,11 @@ const App: React.FC = () => {
                         />
                         <label className="text-sm text-text-main">Marcar como contacto preferido</label>
                       </div>
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                        <p className="text-sm text-blue-800">💡 Puedes omitir este paso y agregar contactos después desde el detalle de la organización</p>
                       </div>
-                    </div>
-                  )}
-                  {orgWizardStep === 4 && (
-                    <div className="space-y-4">
-                      <div className="mb-6">
-                        <h4 className="text-lg font-semibold text-text-main mb-2">📍 Dirección</h4>
-                        <p className="text-sm text-text-secondary">Puedes agregar la dirección ahora o más tarde desde el detalle</p>
-                      </div>
+
+                      {/* Dirección */}
+                      <div className="border border-border-light rounded-lg p-4">
+                        <h5 className="text-md font-semibold text-text-main mb-4">Dirección</h5>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-sm font-semibold text-text-main mb-1.5">
@@ -2547,8 +2544,6 @@ const App: React.FC = () => {
                           />
                         </div>
                       </div>
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                        <p className="text-sm text-blue-800">💡 Puedes omitir este paso y agregar direcciones después desde el detalle de la organización</p>
                       </div>
                     </div>
                   )}
@@ -2579,7 +2574,7 @@ const App: React.FC = () => {
                     {orgWizardStep === 1 ? 'Cancelar' : 'Anterior'}
                   </button>
                   <div className="flex gap-3">
-                    {orgWizardStep < 4 && (
+                    {orgWizardStep < 2 && (
                       <button
                         onClick={() => {
                           if (orgWizardStep === 1 && !orgWizardData.basic.legal_name) {
@@ -2594,7 +2589,7 @@ const App: React.FC = () => {
                         Siguiente
                       </button>
                     )}
-                    {orgWizardStep === 4 && (
+                    {orgWizardStep === 2 && (
                       <button
                         onClick={async () => {
                           if (!orgWizardData.basic.legal_name) {
@@ -2930,7 +2925,7 @@ const App: React.FC = () => {
                   </div>
                   {/* Progress Steps */}
                   <div className="flex items-center justify-between">
-                    {[1, 2, 3, 4, 5].map((step) => (
+                    {[1, 2].map((step) => (
                       <React.Fragment key={step}>
                         <div className="flex items-center">
                           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
@@ -2945,14 +2940,11 @@ const App: React.FC = () => {
                           <span className={`ml-2 text-xs font-medium ${
                             indWizardStep >= step ? 'text-text-main' : 'text-text-secondary'
                           }`}>
-                            {step === 1 && 'Básica'}
-                            {step === 2 && 'Adicional'}
-                            {step === 3 && 'Contacto'}
-                            {step === 4 && 'Dirección'}
-                            {step === 5 && 'Organización'}
+                            {step === 1 && 'Información Principal'}
+                            {step === 2 && 'Opcional'}
                           </span>
                         </div>
-                        {step < 5 && (
+                        {step < 2 && (
                           <div className={`flex-1 h-0.5 mx-2 ${
                             indWizardStep > step ? 'bg-green-500' : 'bg-gray-200'
                           }`} />
@@ -2965,7 +2957,7 @@ const App: React.FC = () => {
                   {indWizardStep === 1 && (
                     <div className="space-y-4">
                       <div className="mb-6">
-                        <h4 className="text-lg font-semibold text-text-main mb-2">👤 Información Básica</h4>
+                        <h4 className="text-lg font-semibold text-text-main mb-2">👤 Información Principal</h4>
                         <p className="text-sm text-text-secondary">Completa los datos esenciales de la persona</p>
                       </div>
                       <div>
@@ -2984,31 +2976,40 @@ const App: React.FC = () => {
                         />
                         <p className="mt-1 text-xs text-text-secondary">💡 Nombre completo de la persona</p>
                       </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-text-main mb-1.5">
-                          Género
-                        </label>
-                        <select
-                          value={indWizardData.basic.gender || ''}
-                          onChange={(e) => setIndWizardData({
-                            ...indWizardData,
-                            basic: { ...indWizardData.basic, gender: e.target.value }
-                          })}
-                          className="w-full px-4 py-2 border border-border-light rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none"
-                        >
-                          <option value="">Seleccionar...</option>
-                          <option value="M">Masculino</option>
-                          <option value="F">Femenino</option>
-                          <option value="O">Otro</option>
-                        </select>
-                      </div>
-                    </div>
-                  )}
-                  {indWizardStep === 2 && (
-                    <div className="space-y-4">
-                      <div className="mb-6">
-                        <h4 className="text-lg font-semibold text-text-main mb-2">📝 Información Adicional</h4>
-                        <p className="text-sm text-text-secondary">Estos campos son opcionales, puedes completarlos más tarde</p>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-semibold text-text-main mb-1.5">
+                            Género
+                          </label>
+                          <select
+                            value={indWizardData.basic.gender || ''}
+                            onChange={(e) => setIndWizardData({
+                              ...indWizardData,
+                              basic: { ...indWizardData.basic, gender: e.target.value }
+                            })}
+                            className="w-full px-4 py-2 border border-border-light rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                          >
+                            <option value="">Seleccionar...</option>
+                            <option value="M">Masculino</option>
+                            <option value="F">Femenino</option>
+                            <option value="O">Otro</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-text-main mb-1.5">
+                            Nacionalidad
+                          </label>
+                          <input
+                            type="text"
+                            value={indWizardData.additional.nationality || ''}
+                            onChange={(e) => setIndWizardData({
+                              ...indWizardData,
+                              additional: { ...indWizardData.additional, nationality: e.target.value }
+                            })}
+                            className="w-full px-4 py-2 border border-border-light rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                            placeholder="Ej. PER"
+                          />
+                        </div>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
@@ -3041,36 +3042,6 @@ const App: React.FC = () => {
                             placeholder="Ej. Pérez García"
                           />
                         </div>
-                        <div>
-                          <label className="block text-sm font-semibold text-text-main mb-1.5">
-                            Nombre Medio
-                          </label>
-                          <input
-                            type="text"
-                            value={indWizardData.additional.middle_name || ''}
-                            onChange={(e) => setIndWizardData({
-                              ...indWizardData,
-                              additional: { ...indWizardData.additional, middle_name: e.target.value }
-                            })}
-                            className="w-full px-4 py-2 border border-border-light rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none"
-                            placeholder="Ej. Carlos"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-semibold text-text-main mb-1.5">
-                            Nacionalidad
-                          </label>
-                          <input
-                            type="text"
-                            value={indWizardData.additional.nationality || ''}
-                            onChange={(e) => setIndWizardData({
-                              ...indWizardData,
-                              additional: { ...indWizardData.additional, nationality: e.target.value }
-                            })}
-                            className="w-full px-4 py-2 border border-border-light rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none"
-                            placeholder="Ej. PER"
-                          />
-                        </div>
                       </div>
                       <div>
                         <label className="block text-sm font-semibold text-text-main mb-1.5">
@@ -3088,14 +3059,98 @@ const App: React.FC = () => {
                         />
                         <p className="mt-1 text-xs text-text-secondary">💡 ID de documento de identidad si aplica</p>
                       </div>
+                      
+                      {/* Búsqueda de Organización */}
+                      <div className="border-t border-border-light pt-4 mt-4">
+                        <label className="block text-sm font-semibold text-text-main mb-1.5">
+                          🏢 Organización (Opcional)
+                        </label>
+                        <p className="text-xs text-text-secondary mb-2">Relaciona este individuo con una organización existente</p>
+                        <input
+                          type="text"
+                          value={relationshipSearchTerm}
+                          onChange={(e) => {
+                            setRelationshipSearchTerm(e.target.value);
+                            if (e.target.value.length >= 2) {
+                              handleSearchForRelationship(e.target.value, 'organization');
+                            } else {
+                              setRelationshipSearchResults([]);
+                            }
+                          }}
+                          className="w-full px-4 py-2 border border-border-light rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                          placeholder="Buscar organización por nombre..."
+                        />
+                        {relationshipSearchLoading && (
+                          <p className="mt-2 text-sm text-text-secondary">Buscando...</p>
+                        )}
+                        {relationshipSearchResults.length > 0 && (
+                          <div className="mt-2 border border-border-light rounded-lg max-h-48 overflow-y-auto">
+                            {relationshipSearchResults.map((result) => (
+                              <button
+                                key={result.public_id}
+                                onClick={() => {
+                                  setIndWizardData({
+                                    ...indWizardData,
+                                    additional: {
+                                      ...indWizardData.additional,
+                                      organization_public_id: result.public_id,
+                                      organization_name: (result as Organization).legal_name
+                                    }
+                                  });
+                                  setRelationshipSearchResults([]);
+                                  setRelationshipSearchTerm((result as Organization).legal_name);
+                                }}
+                                className="w-full px-3 py-2 text-left hover:bg-gray-50 border-b border-border-light last:border-b-0"
+                              >
+                                <p className="text-sm font-medium text-text-main">
+                                  {(result as Organization).legal_name}
+                                </p>
+                                <p className="text-xs text-text-secondary">{result.public_id}</p>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        {indWizardData.additional.organization_public_id && (
+                          <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm text-green-800">
+                                  <strong>Organización seleccionada:</strong> {indWizardData.additional.organization_name}
+                                </p>
+                                <p className="text-xs text-green-600 mt-1">{indWizardData.additional.organization_public_id}</p>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  setIndWizardData({
+                                    ...indWizardData,
+                                    additional: {
+                                      ...indWizardData.additional,
+                                      organization_public_id: undefined,
+                                      organization_name: undefined
+                                    }
+                                  });
+                                  setRelationshipSearchTerm('');
+                                }}
+                                className="text-green-700 hover:text-green-900"
+                              >
+                                <span className="material-symbols-outlined text-sm">close</span>
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
-                  {indWizardStep === 3 && (
-                    <div className="space-y-4">
+                  {indWizardStep === 2 && (
+                    <div className="space-y-6">
                       <div className="mb-6">
-                        <h4 className="text-lg font-semibold text-text-main mb-2">📞 Información de Contacto</h4>
-                        <p className="text-sm text-text-secondary">Puedes agregar contactos ahora o más tarde desde el detalle</p>
+                        <h4 className="text-lg font-semibold text-text-main mb-2">📞 Información Opcional</h4>
+                        <p className="text-sm text-text-secondary">Puedes agregar contacto y dirección ahora o más tarde desde el detalle</p>
                       </div>
+                      
+                      {/* Contacto */}
+                      <div className="border border-border-light rounded-lg p-4">
+                        <h5 className="text-md font-semibold text-text-main mb-4">Contacto</h5>
                       <div>
                         <label className="block text-sm font-semibold text-text-main mb-1.5">
                           Tipo de Contacto
@@ -3123,7 +3178,7 @@ const App: React.FC = () => {
                         </select>
                       </div>
                       {(indWizardData.contact?.contact_medium_type_id ?? 1) === 1 ? (
-                        <div>
+                        <div className="mt-3">
                           <label className="block text-sm font-semibold text-text-main mb-1.5">
                             Email
                           </label>
@@ -3144,7 +3199,7 @@ const App: React.FC = () => {
                           />
                         </div>
                       ) : (
-                        <div>
+                        <div className="mt-3">
                           <label className="block text-sm font-semibold text-text-main mb-1.5">
                             Número
                           </label>
@@ -3165,7 +3220,7 @@ const App: React.FC = () => {
                           />
                         </div>
                       )}
-                      <div className="flex items-center">
+                      <div className="flex items-center mt-3">
                         <input
                           type="checkbox"
                           checked={indWizardData.contact?.preferred || false}
@@ -3177,17 +3232,11 @@ const App: React.FC = () => {
                         />
                         <label className="text-sm text-text-main">Marcar como contacto preferido</label>
                       </div>
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                        <p className="text-sm text-blue-800">💡 Puedes omitir este paso y agregar contactos después desde el detalle</p>
                       </div>
-                    </div>
-                  )}
-                  {indWizardStep === 4 && (
-                    <div className="space-y-4">
-                      <div className="mb-6">
-                        <h4 className="text-lg font-semibold text-text-main mb-2">📍 Dirección</h4>
-                        <p className="text-sm text-text-secondary">Puedes agregar la dirección ahora o más tarde desde el detalle</p>
-                      </div>
+
+                      {/* Dirección */}
+                      <div className="border border-border-light rounded-lg p-4">
+                        <h5 className="text-md font-semibold text-text-main mb-4">Dirección</h5>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-sm font-semibold text-text-main mb-1.5">
@@ -3254,75 +3303,6 @@ const App: React.FC = () => {
                           />
                         </div>
                       </div>
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                        <p className="text-sm text-blue-800">💡 Puedes omitir este paso y agregar direcciones después desde el detalle</p>
-                      </div>
-                    </div>
-                  )}
-                  {indWizardStep === 5 && (
-                    <div className="space-y-4">
-                      <div className="mb-6">
-                        <h4 className="text-lg font-semibold text-text-main mb-2">🏢 Relacionar con Organización</h4>
-                        <p className="text-sm text-text-secondary">Puedes relacionar este individuo con una organización existente</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-text-main mb-1.5">
-                          Buscar Organización
-                        </label>
-                        <input
-                          type="text"
-                          value={relationshipSearchTerm}
-                          onChange={(e) => {
-                            setRelationshipSearchTerm(e.target.value);
-                            if (e.target.value.length >= 2) {
-                              handleSearchForRelationship(e.target.value, 'organization');
-                            } else {
-                              setRelationshipSearchResults([]);
-                            }
-                          }}
-                          className="w-full px-4 py-2 border border-border-light rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none"
-                          placeholder="Buscar organización por nombre..."
-                        />
-                        {relationshipSearchLoading && (
-                          <p className="mt-2 text-sm text-text-secondary">Buscando...</p>
-                        )}
-                        {relationshipSearchResults.length > 0 && (
-                          <div className="mt-2 border border-border-light rounded-lg max-h-48 overflow-y-auto">
-                            {relationshipSearchResults.map((result) => (
-                              <button
-                                key={result.public_id}
-                                onClick={() => {
-                                  setIndWizardData({
-                                    ...indWizardData,
-                                    additional: {
-                                      ...indWizardData.additional,
-                                      organization_public_id: result.public_id,
-                                      organization_name: (result as Organization).legal_name
-                                    }
-                                  });
-                                  setRelationshipSearchResults([]);
-                                  setRelationshipSearchTerm((result as Organization).legal_name);
-                                }}
-                                className="w-full px-3 py-2 text-left hover:bg-gray-50 border-b border-border-light last:border-b-0"
-                              >
-                                <p className="text-sm font-medium text-text-main">
-                                  {(result as Organization).legal_name}
-                                </p>
-                                <p className="text-xs text-text-secondary">{result.public_id}</p>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                        {indWizardData.additional.organization_public_id && (
-                          <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                            <p className="text-sm text-green-800">
-                              <strong>Organización seleccionada:</strong> {indWizardData.additional.organization_name}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                        <p className="text-sm text-blue-800">💡 Puedes omitir este paso y relacionar después desde el detalle</p>
                       </div>
                     </div>
                   )}
@@ -3353,7 +3333,7 @@ const App: React.FC = () => {
                     {indWizardStep === 1 ? 'Cancelar' : 'Anterior'}
                   </button>
                   <div className="flex gap-3">
-                    {indWizardStep < 5 && (
+                    {indWizardStep < 2 && (
                       <button
                         onClick={() => {
                           if (indWizardStep === 1 && !indWizardData.basic.full_name) {
@@ -3368,7 +3348,7 @@ const App: React.FC = () => {
                         Siguiente
                       </button>
                     )}
-                    {indWizardStep === 5 && (
+                    {indWizardStep === 2 && (
                       <button
                         onClick={async () => {
                           if (!indWizardData.basic.full_name) {
@@ -3702,15 +3682,13 @@ const App: React.FC = () => {
                           <div className="pt-4 border-t border-border-light">
                             <button
                               onClick={() => {
-                                setSubsidiaryFormData({
-                                  legal_name: '',
-                                  business_name: '',
-                                  web_site: '',
-                                  country_code: 'PER',
-                                  other_name: '',
-                                  source_reference: '',
-                                  status: 1
+                                setSubsidiaryWizardData({
+                                  basic: { legal_name: '', country_code: 'PER', status: 1 },
+                                  additional: {},
+                                  contact: undefined,
+                                  address: undefined
                                 });
+                                setSubsidiaryWizardStep(1);
                                 setShowSubsidiaryModal(true);
                               }}
                               className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2"
