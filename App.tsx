@@ -1562,15 +1562,6 @@ const App: React.FC = () => {
       <header className="w-full bg-white dark:bg-[#1a202c] border-b border-border-light flex-shrink-0 z-20">
         <div className="max-w-[1400px] mx-auto w-full px-8">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-3">
-              <div className="size-8 rounded bg-primary flex items-center justify-center text-white">
-                <span className="material-symbols-outlined text-[20px]">verified_user</span>
-              </div>
-              <h1 className="text-text-main text-lg font-bold leading-tight">
-                Kashio
-                <span className="text-xs font-normal text-text-secondary ml-1">v1.0.0</span>
-              </h1>
-            </div>
           </div>
         </div>
       </header>
@@ -1579,7 +1570,7 @@ const App: React.FC = () => {
       <main className="flex-1 flex h-full overflow-hidden relative">
         {/* Sidebar */}
         <aside className="w-64 bg-white dark:bg-[#1a202c] border-r border-border-light flex-shrink-0 flex flex-col">
-          <div className="p-4">
+          <div className="p-4 flex-1">
             <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-2">
               Gestión de Empresas
             </h2>
@@ -1607,6 +1598,21 @@ const App: React.FC = () => {
                 <span>Individuos</span>
               </button>
             </nav>
+          </div>
+          
+          {/* Kashio branding al final del sidebar */}
+          <div className="p-4 border-t border-border-light">
+            <div className="flex items-center gap-3">
+              <div className="size-8 rounded bg-primary flex items-center justify-center text-white flex-shrink-0">
+                <span className="material-symbols-outlined text-[20px]">verified_user</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <h1 className="text-text-main text-lg font-bold leading-tight m-0">
+                  Kashio
+                </h1>
+                <span className="text-xs font-normal text-text-secondary leading-tight">v1.0.0</span>
+              </div>
+            </div>
           </div>
         </aside>
 
