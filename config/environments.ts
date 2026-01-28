@@ -10,7 +10,17 @@ export const BFF_URLS = {
 
 // Obtener URL del BFF desde variable de entorno o usar LOCAL por defecto
 export function getBffUrl(): string {
-  // Si estamos en localhost, SIEMPRE usar localhost:3003
+  // Prioridad: VITE_BFF_URL > VITE_ENVIRONMENT > LOCAL (solo si no hay variable de entorno)
+  if (import.meta.env.VITE_BFF_URL) {
+    return import.meta.env.VITE_BFF_URL;
+  }
+  
+  const env = import.meta.env.VITE_ENVIRONMENT;
+  if (env && ['LOCAL', 'd1', 'q3'].includes(env)) {
+    return BFF_URLS[env as keyof typeof BFF_URLS];
+  }
+  
+  // Si no hay variable de entorno, detectar por hostname
   if (typeof window !== 'undefined') {
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     if (isLocalhost) {
@@ -18,13 +28,8 @@ export function getBffUrl(): string {
     }
   }
   
-  // Prioridad: VITE_BFF_URL > VITE_ENVIRONMENT > LOCAL
-  if (import.meta.env.VITE_BFF_URL) {
-    return import.meta.env.VITE_BFF_URL;
-  }
-  
-  const env = import.meta.env.VITE_ENVIRONMENT || 'LOCAL';
-  return BFF_URLS[env as keyof typeof BFF_URLS] || BFF_URLS.LOCAL;
+  // Por defecto LOCAL
+  return BFF_URLS.LOCAL;
 }
 
 // Configuraciones de KSEC por entorno (solo para roles y productos)

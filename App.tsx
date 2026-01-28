@@ -123,9 +123,13 @@ const App: React.FC = () => {
 
   const [environment] = useState<Environment>(() => {
     const envFromVar = (import.meta as any).env?.VITE_ENVIRONMENT;
+    // Si hay una variable de entorno explícita, usarla (incluso en localhost)
+    if (envFromVar && ['LOCAL', 'd1', 'q3'].includes(envFromVar)) {
+      return envFromVar as Environment;
+    }
+    // Si no hay variable de entorno, detectar por hostname
     const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-    const finalEnv = (!envFromVar || !['LOCAL', 'd1', 'q3'].includes(envFromVar) || isLocalhost) ? 'LOCAL' : envFromVar as Environment;
-    return finalEnv;
+    return isLocalhost ? 'LOCAL' : 'd1'; // Por defecto d1 si no es localhost
   });
 
   const envConfig = useMemo(() => {
